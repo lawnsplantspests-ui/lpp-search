@@ -115,6 +115,8 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
         <button class="btn btn-danger hidden" id="stopBtn" onclick="stopGeocode()">⏸ Stop</button>
       </div>
 
+      <button class="btn" style="background:rgba(58,141,222,0.2);color:#5ba8e8;border:1px solid rgba(58,141,222,0.4);box-shadow:none;margin-top:8px" onclick="clearAllCache()">🗑 Clear App Cache (force fresh data)</button>
+
       <div class="log hidden" id="log"></div>
     </div>
   </div>
@@ -133,7 +135,7 @@ const firebaseConfig = {
   appId: "1:566058509628:web:beaf2b918377be9c152a39"
 };
 
-const SHEETS_API = "https://script.google.com/macros/s/AKfycbwprTx1etyHe9yszY5idPf0hs0nN_JAjEnd7R8Ua-OcgQmXvDV59EkncjgNS1vGuufkRQ/exec";
+const SHEETS_API = "https://script.google.com/macros/s/AKfycbwl_9UzHAKlomoXALDOQEqHNOj5rLWVQ0fsk4fr4Bacacco6L0d4hbEopL2fzfzsWtFTQ/exec";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -234,6 +236,18 @@ window.startGeocode = async function() {
 window.stopGeocode = function() {
   running = false;
   log('\nStopping...', 'skip');
+};
+
+window.clearAllCache = function() {
+  if (!confirm('Clear all cached registry data?\n\nThis forces the app to reload fresh data from Google Sheets next time you open Map or Search.')) return;
+  const keys = ['lpp_registry', 'lpp_registry_v2', 'lpp_registry_time', 'lpp_registry_v2_time',
+                'lpp_swarms', 'lpp_swarms_time', 'lpp_search_log', 'lpp_search_log_time',
+                'lpp_contact_logs', 'lpp_contact_logs_time'];
+  // Also clear per-address geocoding cache
+  Object.keys(localStorage).forEach(k => {
+    if (k.startsWith('geo_') || keys.indexOf(k) >= 0) localStorage.removeItem(k);
+  });
+  alert('✓ Cache cleared. Open Map or Search to load fresh data.');
 };
 
 async function processQueue() {
