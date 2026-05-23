@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LPP Search">
+<meta name="theme-color" content="#0d1f13">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Admin Panel — LPP</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=DM+Mono&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--green:#1a4d2e;--green-mid:#2d7a47;--lime:#7ec850;--cream:#f5f0e8;--amber:#e8a020;--red:#c0392b;--dark:#0d1f13;--border:rgba(126,200,80,0.25)}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);color:var(--cream)}
+.bg{position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse 80% 60% at 20% 10%,rgba(45,122,71,0.35) 0%,transparent 60%),radial-gradient(ellipse 60% 80% at 85% 90%,rgba(26,77,46,0.4) 0%,transparent 55%),radial-gradient(ellipse 100% 100% at 50% 50%,#0d1f13 0%,#060e09 100%)}
+.container{position:relative;z-index:10;max-width:480px;margin:0 auto;padding:20px 16px 40px;min-height:100vh}
+.back{display:inline-flex;align-items:center;gap:6px;color:var(--lime);text-decoration:none;font-size:13px;font-weight:500;margin-bottom:16px;opacity:0.7;padding:8px 12px;background:rgba(126,200,80,0.05);border:1px solid rgba(126,200,80,0.15);border-radius:10px}
+.title{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:1px;margin-bottom:4px;line-height:1}
+.subtitle{font-size:13px;color:rgba(245,240,232,0.5);margin-bottom:20px}
+.subtitle .badge{display:inline-block;background:rgba(232,160,32,0.15);color:var(--amber);border:1px solid rgba(232,160,32,0.3);padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:1px;margin-left:6px;vertical-align:middle}
+
+/* Tabs */
+.tabs{display:flex;background:rgba(0,0,0,0.3);border-radius:13px;padding:4px;margin-bottom:18px;border:1px solid rgba(126,200,80,0.1);gap:3px}
+.tab{flex:1;padding:11px 6px;font-size:12px;font-weight:600;border:none;background:transparent;color:rgba(245,240,232,0.4);border-radius:10px;cursor:pointer;font-family:'DM Sans',sans-serif;-webkit-appearance:none;letter-spacing:0.4px}
+.tab.active{background:linear-gradient(135deg,var(--green-mid),var(--green));color:var(--cream);box-shadow:0 2px 8px rgba(45,122,71,0.3)}
+
+.panel{display:none;animation:fadeIn 0.3s ease}
+.panel.show{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* Cards */
+.section-card{background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px}
+.section-title{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--lime);font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+
+/* User cards */
+.user-card{background:rgba(0,0,0,0.25);border:1px solid rgba(126,200,80,0.1);border-radius:11px;padding:13px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
+.user-avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--green-mid),var(--lime));display:flex;align-items:center;justify-content:center;color:var(--dark);font-weight:700;font-size:14px;flex-shrink:0}
+.user-info{flex:1;min-width:0}
+.user-name{font-size:14px;font-weight:600;line-height:1.2;margin-bottom:2px}
+.user-email{font-size:11px;color:rgba(245,240,232,0.45);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.user-role{font-size:9px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;padding:2px 7px;border-radius:5px;display:inline-block;margin-top:3px}
+.user-role.admin{background:rgba(232,160,32,0.15);color:var(--amber);border:1px solid rgba(232,160,32,0.3)}
+.user-role.employee{background:rgba(126,200,80,0.1);color:var(--lime);border:1px solid rgba(126,200,80,0.2)}
+.user-delete{width:32px;height:32px;background:rgba(192,57,43,0.1);border:1px solid rgba(192,57,43,0.25);border-radius:8px;color:#e74c3c;font-size:14px;cursor:pointer;-webkit-appearance:none;flex-shrink:0}
+.user-delete:active{background:rgba(192,57,43,0.2)}
+.user-self{font-size:9px;color:var(--lime);background:rgba(126,200,80,0.1);padding:2px 6px;border-radius:4px;margin-left:6px}
+
+/* Search log cards */
+.search-card{background:rgba(0,0,0,0.25);border:1px solid rgba(126,200,80,0.1);border-radius:10px;padding:11px 13px;margin-bottom:7px;font-size:13px;animation:slideIn 0.3s ease both}
+@keyframes slideIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.search-card.has-hyper{border-left:3px solid #e74c3c}
+.search-card.has-apiary{border-left:3px solid var(--amber)}
+.search-card.clear{border-left:3px solid var(--lime)}
+.search-meta{display:flex;justify-content:space-between;gap:8px;margin-bottom:3px}
+.search-user{font-size:11px;color:var(--lime);font-weight:600}
+.search-time{font-size:10px;color:rgba(245,240,232,0.4);font-family:'DM Mono',monospace;white-space:nowrap}
+.search-addr{font-size:13px;color:rgba(245,240,232,0.85);margin:3px 0}
+.search-result{font-size:11px;font-weight:600;letter-spacing:0.3px}
+.search-result.clear{color:var(--lime)}
+.search-result.warning{color:var(--amber)}
+.search-result.danger{color:#e74c3c}
+
+/* Sync section */
+.sync-status{padding:12px 14px;background:rgba(0,0,0,0.3);border-radius:10px;border:1px solid rgba(126,200,80,0.1);margin-bottom:12px;font-size:13px}
+.sync-status .row{display:flex;justify-content:space-between;margin:4px 0}
+.sync-status .row span:first-child{color:rgba(245,240,232,0.5);font-size:12px}
+.sync-status .row span:last-child{font-weight:600;color:var(--lime);font-size:12px;font-family:'DM Mono',monospace}
+
+.btn{width:100%;padding:14px;background:linear-gradient(135deg,var(--lime),var(--green-mid));color:var(--dark);font-size:14px;font-weight:700;letter-spacing:0.5px;border:none;border-radius:12px;cursor:pointer;transition:transform 0.15s,opacity 0.15s;box-shadow:0 6px 20px rgba(126,200,80,0.3);font-family:'DM Sans',sans-serif;-webkit-appearance:none}
+.btn:active{transform:scale(0.97)}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+.btn-spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(13,31,19,0.3);border-top-color:var(--dark);border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.btn-secondary{background:transparent;border:1px solid rgba(126,200,80,0.3);color:var(--lime);box-shadow:none;font-size:13px;padding:11px}
+.btn-secondary:active{background:rgba(126,200,80,0.08)}
+.btn-danger{background:linear-gradient(135deg,#c0392b,#8b2e22);color:var(--cream);box-shadow:0 6px 20px rgba(192,57,43,0.3)}
+
+.loading{text-align:center;padding:40px 20px;color:rgba(245,240,232,0.5)}
+.load-spinner{display:inline-block;width:24px;height:24px;border:3px solid rgba(126,200,80,0.2);border-top-color:var(--lime);border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:10px}
+.empty{text-align:center;padding:30px 20px;color:rgba(245,240,232,0.4);font-size:13px}
+
+input[type="text"]{width:100%;padding:11px 14px;background:rgba(0,0,0,0.35);border:1px solid rgba(126,200,80,0.2);border-radius:10px;color:var(--cream);font-size:14px;font-family:'DM Sans',sans-serif;outline:none;-webkit-appearance:none;margin-bottom:8px}
+input:focus{border-color:var(--lime)}
+input::placeholder{color:rgba(245,240,232,0.25)}
+
+.warning-box{background:rgba(232,160,32,0.1);border:1px solid rgba(232,160,32,0.3);border-radius:10px;padding:11px 14px;font-size:12px;line-height:1.5;color:var(--amber);margin-bottom:12px}
+.info-box{background:rgba(126,200,80,0.06);border:1px solid rgba(126,200,80,0.2);border-radius:10px;padding:11px 14px;font-size:12px;line-height:1.5;color:rgba(245,240,232,0.7);margin-bottom:12px}
+
+.no-access{text-align:center;padding:60px 20px}
+.no-access h2{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--red);margin-bottom:10px}
+.no-access p{font-size:14px;color:rgba(245,240,232,0.6)}
+
+.codes-display{background:rgba(0,0,0,0.4);border:1px solid rgba(126,200,80,0.15);border-radius:10px;padding:14px;margin-bottom:10px;display:flex;gap:12px;justify-content:space-around}
+.code-item{text-align:center;flex:1}
+.code-label{font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:rgba(245,240,232,0.5);margin-bottom:4px;font-weight:600}
+.code-val{font-family:'DM Mono',monospace;font-size:22px;color:var(--lime);letter-spacing:4px;font-weight:600}
+
+.hidden{display:none!important}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--lime);color:var(--dark);padding:12px 20px;border-radius:12px;font-size:13px;font-weight:600;z-index:200;box-shadow:0 8px 32px rgba(126,200,80,0.4);display:none;animation:toastIn 0.3s ease}
+.toast.show{display:block}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,20px)}to{opacity:1;transform:translate(-50%,0)}}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="container">
+  <a href="index.html" class="back">← Dashboard</a>
+
+  <div id="noAccess" class="no-access hidden">
+    <h2>⛔ Admin Only</h2>
+    <p>This panel is restricted to administrators.</p>
+  </div>
+
+  <div id="mainContent" class="hidden">
+    <div class="title">Admin Panel</div>
+    <div class="subtitle">Manage users, view activity, sync data <span class="badge">⭐ ADMIN</span></div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="showPanel('users')" id="tabUsers">👥 Users</button>
+      <button class="tab" onclick="showPanel('activity')" id="tabActivity">📊 Activity</button>
+      <button class="tab" onclick="showPanel('sync')" id="tabSync">🔄 Sync</button>
+    </div>
+
+    <!-- USERS PANEL -->
+    <div class="panel show" id="panelUsers">
+      <div class="section-card">
+        <div class="section-title">🔑 Access Codes</div>
+        <div class="codes-display">
+          <div class="code-item">
+            <div class="code-label">Admin</div>
+            <div class="code-val">0620</div>
+          </div>
+          <div class="code-item">
+            <div class="code-label">Employee</div>
+            <div class="code-val">0420</div>
+          </div>
+        </div>
+        <div class="info-box">
+          Share these codes only with people you trust. Anyone with the admin code (0620) can manage users and trigger PA Plants sync.
+        </div>
+      </div>
+
+      <div class="section-card">
+        <div class="section-title">👥 Registered Users</div>
+        <input type="text" id="userSearch" placeholder="Search by name or email..." oninput="renderUsers()">
+        <div id="usersContent">
+          <div class="loading"><div class="load-spinner"></div><div>Loading users...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACTIVITY PANEL -->
+    <div class="panel" id="panelActivity">
+      <div class="section-card">
+        <div class="section-title">📊 Search Activity</div>
+        <input type="text" id="activitySearch" placeholder="Filter by user, address..." oninput="renderActivity()">
+        <button class="btn-secondary" style="width:100%;border-radius:10px;padding:10px;margin-bottom:10px;font-family:'DM Sans',sans-serif;cursor:pointer" onclick="loadActivity(true)">↻ Refresh from Sheet</button>
+        <div id="activityContent">
+          <div class="loading"><div class="load-spinner"></div><div>Loading activity...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SYNC PANEL -->
+    <div class="panel" id="panelSync">
+      <div class="section-card">
+        <div class="section-title">🔄 PA Plants Sync</div>
+        
+        <div class="warning-box">
+          🔐 <strong>Credentials Security:</strong> Your PA Plants login (Lawnspp) is never stored in this app or visible to employees. You must manually log into paplants.pa.gov and capture data when syncing.
+        </div>
+
+        <div class="sync-status">
+          <div class="row"><span>Current records</span><span id="syncCount">—</span></div>
+          <div class="row"><span>Last sync</span><span id="lastSync">—</span></div>
+          <div class="row"><span>Counties covered</span><span id="counties">—</span></div>
+          <div class="row"><span>Recommended cadence</span><span>Monthly</span></div>
+        </div>
+
+        <div class="info-box">
+          <strong>How to sync:</strong><br>
+          1. Log into paplants.pa.gov (admin only)<br>
+          2. Run searches for each township<br>
+          3. Take screenshots of results<br>
+          4. Upload screenshots here, OR<br>
+          5. Manually add new records via Google Sheets
+        </div>
+
+        <a href="https://docs.google.com/spreadsheets/d/1UED2EPSARAUhNua4mUGSgxkO2q18v3PkzkrVWmg5Ngk/edit" target="_blank" class="btn btn-secondary" style="display:block;text-align:center;text-decoration:none;margin-bottom:8px">📊 Open Master Google Sheet</a>
+        
+        <a href="https://paplants.pa.gov" target="_blank" class="btn btn-secondary" style="display:block;text-align:center;text-decoration:none;margin-bottom:8px">🔗 Open PA Plants Registry</a>
+
+        <button class="btn" onclick="markSynced()" style="margin-top:6px">✓ Mark Sync Complete (Update Timestamp)</button>
+      </div>
+
+      <div class="section-card">
+        <div class="section-title">🗺️ Counties</div>
+        <div class="info-box">
+          <strong>Currently covered:</strong> Dauphin (✓)<br>
+          <strong>Planned:</strong> York, Perry, Cumberland<br><br>
+          Add records for new counties directly in the Google Sheet. Make sure to fill in the "County" column correctly.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">✓ Done</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, deleteUser } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, getDocs, doc, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCtBCUuQAHuQ1O8V2sXoFYBcfaL_samV4o",
+  authDomain: "lpp-search.firebaseapp.com",
+  projectId: "lpp-search",
+  storageBucket: "lpp-search.firebasestorage.app",
+  messagingSenderId: "566058509628",
+  appId: "1:566058509628:web:beaf2b918377be9c152a39"
+};
+
+const SHEETS_API = "https://script.google.com/macros/s/AKfycbwprTx1etyHe9yszY5idPf0hs0nN_JAjEnd7R8Ua-OcgQmXvDV59EkncjgNS1vGuufkRQ/exec";
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let currentUser = null;
+let allUsers = [];
+let allActivity = [];
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) { window.location.href = 'index.html'; return; }
+  currentUser = user;
+  
+  const localUser = JSON.parse(localStorage.getItem('lpp_user') || '{}');
+  if (localUser.role !== 'admin') {
+    document.getElementById('noAccess').classList.remove('hidden');
+    return;
+  }
+  
+  document.getElementById('mainContent').classList.remove('hidden');
+  loadUsers();
+  loadSyncStatus();
+});
+
+window.showPanel = function(panel) {
+  ['users','activity','sync'].forEach(p => {
+    document.getElementById('panel' + p.charAt(0).toUpperCase()+p.slice(1)).classList.toggle('show', p === panel);
+    document.getElementById('tab' + p.charAt(0).toUpperCase()+p.slice(1)).classList.toggle('active', p === panel);
+  });
+  if (panel === 'activity' && allActivity.length === 0) loadActivity();
+};
+
+// ── USERS ──────────────────────────────────────────────
+async function loadUsers() {
+  try {
+    const snap = await getDocs(collection(db, 'users'));
+    allUsers = [];
+    snap.forEach(d => {
+      allUsers.push({ id: d.id, ...d.data() });
+    });
+    renderUsers();
+  } catch(e) {
+    document.getElementById('usersContent').innerHTML = 
+      `<div class="empty">Failed to load: ${e.message}</div>`;
+  }
+}
+
+window.renderUsers = function() {
+  const search = document.getElementById('userSearch').value.trim().toLowerCase();
+  let users = allUsers.slice();
+  if (search) {
+    users = users.filter(u => 
+      (u.name || '').toLowerCase().includes(search) ||
+      (u.email || '').toLowerCase().includes(search)
+    );
+  }
+  
+  // Sort: admins first, then by name
+  users.sort((a, b) => {
+    if (a.role !== b.role) return a.role === 'admin' ? -1 : 1;
+    return (a.name || '').localeCompare(b.name || '');
+  });
+  
+  const content = document.getElementById('usersContent');
+  if (users.length === 0) {
+    content.innerHTML = `<div class="empty">No users found</div>`;
+    return;
+  }
+  
+  let html = '';
+  for (const u of users) {
+    const isSelf = u.id === currentUser.uid;
+    const initials = (u.name || u.email || '?').split(' ').map(s => s[0]).join('').slice(0, 2).toUpperCase();
+    html += `
+      <div class="user-card">
+        <div class="user-avatar">${initials}</div>
+        <div class="user-info">
+          <div class="user-name">${escapeHtml(u.name || 'Unnamed')}${isSelf ? '<span class="user-self">YOU</span>' : ''}</div>
+          <div class="user-email">${escapeHtml(u.email || '')}</div>
+          <div class="user-role ${u.role || 'employee'}">${u.role === 'admin' ? '⭐ Admin' : 'Employee'}</div>
+        </div>
+        ${!isSelf ? `<button class="user-delete" onclick="confirmDeleteUser('${u.id}','${escapeHtml(u.name || u.email)}')">🗑</button>` : ''}
+      </div>
+    `;
+  }
+  content.innerHTML = html;
+};
+
+window.confirmDeleteUser = async function(uid, name) {
+  if (!confirm(`Delete user "${name}"?\n\nThis removes their profile. They will lose access on next login but their existing logs in Google Sheets remain.`)) return;
+  try {
+    await deleteDoc(doc(db, 'users', uid));
+    allUsers = allUsers.filter(u => u.id !== uid);
+    renderUsers();
+    showToast('✓ User deleted');
+  } catch(e) {
+    alert('Failed to delete: ' + e.message);
+  }
+};
+
+// ── ACTIVITY ───────────────────────────────────────────
+window.loadActivity = async function(force) {
+  if (force) {
+    localStorage.removeItem('lpp_search_log');
+    localStorage.removeItem('lpp_search_log_time');
+  }
+  const cached = localStorage.getItem('lpp_search_log');
+  const cacheTime = localStorage.getItem('lpp_search_log_time');
+  if (!force && cached && cacheTime && (Date.now() - parseInt(cacheTime) < 1800000)) {
+    allActivity = JSON.parse(cached);
+    renderActivity();
+    return;
+  }
+  
+  try {
+    const res = await fetch(SHEETS_API + '?action=getSearchLogs');
+    const data = await res.json();
+    allActivity = data.logs || [];
+    localStorage.setItem('lpp_search_log', JSON.stringify(allActivity));
+    localStorage.setItem('lpp_search_log_time', Date.now().toString());
+    renderActivity();
+  } catch(e) {
+    document.getElementById('activityContent').innerHTML = 
+      `<div class="empty">Failed to load: ${e.message}</div>`;
+  }
+};
+
+window.renderActivity = function() {
+  const search = document.getElementById('activitySearch').value.trim().toLowerCase();
+  let logs = allActivity.slice();
+  if (search) {
+    logs = logs.filter(l => 
+      (l.userName || '').toLowerCase().includes(search) ||
+      (l.userEmail || '').toLowerCase().includes(search) ||
+      (l.address || '').toLowerCase().includes(search)
+    );
+  }
+  
+  const content = document.getElementById('activityContent');
+  if (logs.length === 0) {
+    content.innerHTML = `<div class="empty">No search activity yet</div>`;
+    return;
+  }
+  
+  let html = '';
+  for (const log of logs.slice(0, 100)) {
+    const t = new Date(log.timestamp);
+    const dateStr = t.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+    const timeStr = t.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
+    const hyperCount = parseInt(log.hyperCount) || 0;
+    const apiaryCount = parseInt(log.apiaryCount) || 0;
+    let cls = 'clear', resultText = '✓ Clear';
+    if (hyperCount > 0) { cls = 'has-hyper danger'; resultText = `⚠️ ${hyperCount} hyper${hyperCount>1?'s':''}, ${apiaryCount} apiary`; }
+    else if (apiaryCount > 0) { cls = 'has-apiary warning'; resultText = `🐝 ${apiaryCount} apiary nearby`; }
+    
+    html += `
+      <div class="search-card ${cls.split(' ')[0]}">
+        <div class="search-meta">
+          <span class="search-user">${escapeHtml(log.userName || log.userEmail)}</span>
+          <span class="search-time">${dateStr} ${timeStr}</span>
+        </div>
+        <div class="search-addr">${escapeHtml(log.address)}</div>
+        <div class="search-result ${cls.split(' ')[1] || 'clear'}">${resultText}</div>
+      </div>
+    `;
+  }
+  if (logs.length > 100) html += `<div class="empty" style="padding:14px">Showing latest 100 of ${logs.length}</div>`;
+  content.innerHTML = html;
+};
+
+// ── SYNC ───────────────────────────────────────────────
+function loadSyncStatus() {
+  // Count from registry cache
+  const cached = localStorage.getItem('lpp_registry');
+  if (cached) {
+    const reg = JSON.parse(cached);
+    document.getElementById('syncCount').textContent = reg.length + ' records';
+    const counties = [...new Set(reg.map(r => r.county))].join(', ');
+    document.getElementById('counties').textContent = counties || 'Dauphin';
+  } else {
+    document.getElementById('syncCount').textContent = 'Not loaded';
+    document.getElementById('counties').textContent = 'Dauphin';
+  }
+  const last = localStorage.getItem('lpp_last_sync');
+  document.getElementById('lastSync').textContent = last ? new Date(parseInt(last)).toLocaleString() : 'Never';
+}
+
+window.markSynced = function() {
+  if (!confirm('Mark sync as complete?\n\nThis just updates the timestamp. Make sure you actually added new records to the Google Sheet first.')) return;
+  localStorage.setItem('lpp_last_sync', Date.now().toString());
+  loadSyncStatus();
+  showToast('✓ Sync timestamp updated');
+};
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&apos;'}[c]));
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+</script>
+</body>
+</html>
