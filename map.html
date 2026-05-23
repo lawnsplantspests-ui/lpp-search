@@ -232,7 +232,7 @@ onAuthStateChanged(auth, async (user) => {
 async function loadData() {
   try {
     // Try cache first
-    const cachedReg = localStorage.getItem('lpp_registry');
+    const cachedReg = localStorage.getItem('lpp_registry_v2');
     if (cachedReg) registry = JSON.parse(cachedReg);
     const cachedSw = localStorage.getItem('lpp_swarms');
     if (cachedSw) swarms = JSON.parse(cachedSw);
@@ -242,8 +242,8 @@ async function loadData() {
     const data = await res.json();
     if (data.registry) {
       registry = data.registry;
-      localStorage.setItem('lpp_registry', JSON.stringify(registry));
-      localStorage.setItem('lpp_registry_time', Date.now().toString());
+      localStorage.setItem('lpp_registry_v2', JSON.stringify(registry));
+      localStorage.setItem('lpp_registry_v2_time', Date.now().toString());
     }
     if (data.swarms) {
       swarms = data.swarms;

@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LPP Search">
+<meta name="theme-color" content="#0d1f13">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Geocoder — LPP Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=DM+Mono&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--green:#1a4d2e;--green-mid:#2d7a47;--lime:#7ec850;--cream:#f5f0e8;--amber:#e8a020;--red:#c0392b;--dark:#0d1f13;--border:rgba(126,200,80,0.25)}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);color:var(--cream)}
+.bg{position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse 80% 60% at 20% 10%,rgba(45,122,71,0.35) 0%,transparent 60%),radial-gradient(ellipse 60% 80% at 85% 90%,rgba(26,77,46,0.4) 0%,transparent 55%),radial-gradient(ellipse 100% 100% at 50% 50%,#0d1f13 0%,#060e09 100%)}
+.container{position:relative;z-index:10;max-width:480px;margin:0 auto;padding:20px 16px 40px;min-height:100vh}
+.back{display:inline-flex;align-items:center;gap:6px;color:var(--lime);text-decoration:none;font-size:13px;font-weight:500;margin-bottom:16px;opacity:0.7;padding:8px 12px;background:rgba(126,200,80,0.05);border:1px solid rgba(126,200,80,0.15);border-radius:10px}
+.title{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:1px;margin-bottom:4px;line-height:1}
+.subtitle{font-size:13px;color:rgba(245,240,232,0.5);margin-bottom:20px}
+
+.warning-box{background:rgba(232,160,32,0.1);border:1px solid rgba(232,160,32,0.3);border-radius:12px;padding:14px 16px;font-size:13px;line-height:1.5;color:var(--amber);margin-bottom:14px}
+.info-box{background:rgba(126,200,80,0.06);border:1px solid rgba(126,200,80,0.2);border-radius:12px;padding:14px 16px;font-size:13px;line-height:1.5;color:rgba(245,240,232,0.75);margin-bottom:14px}
+
+.card{background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:14px}
+.section-title{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--lime);font-weight:700;margin-bottom:12px}
+
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.stat{background:rgba(0,0,0,0.3);border:1px solid rgba(126,200,80,0.15);border-radius:11px;padding:12px 8px;text-align:center}
+.stat-num{font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--lime);line-height:1}
+.stat-num.warn{color:var(--amber)}
+.stat-num.err{color:#e74c3c}
+.stat-label{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:rgba(245,240,232,0.5);margin-top:3px}
+
+.btn{width:100%;padding:14px;background:linear-gradient(135deg,var(--lime),var(--green-mid));color:var(--dark);font-size:14px;font-weight:700;letter-spacing:0.5px;border:none;border-radius:12px;cursor:pointer;transition:transform 0.15s,opacity 0.15s;box-shadow:0 4px 16px rgba(126,200,80,0.3);font-family:'DM Sans',sans-serif;-webkit-appearance:none}
+.btn:active{transform:scale(0.97)}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+.btn-spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(13,31,19,0.3);border-top-color:var(--dark);border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:8px}
+.btn-danger{background:linear-gradient(135deg,#c0392b,#8b2e22);color:var(--cream);box-shadow:0 4px 16px rgba(192,57,43,0.3)}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.progress-bar{height:10px;background:rgba(0,0,0,0.4);border-radius:5px;overflow:hidden;margin:14px 0 6px}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--lime),var(--green-mid));width:0%;transition:width 0.3s}
+.progress-text{font-family:'DM Mono',monospace;font-size:11px;color:var(--lime);text-align:center;margin-bottom:8px}
+.eta-text{font-size:11px;color:rgba(245,240,232,0.45);text-align:center;font-family:'DM Mono',monospace}
+
+.log{background:rgba(0,0,0,0.5);border:1px solid rgba(126,200,80,0.1);border-radius:10px;padding:12px;font-family:'DM Mono',monospace;font-size:10px;line-height:1.6;max-height:280px;overflow-y:auto;margin-top:14px}
+.log-entry{padding:1px 0;color:rgba(245,240,232,0.65)}
+.log-entry.ok{color:var(--lime)}
+.log-entry.skip{color:rgba(245,240,232,0.4)}
+.log-entry.err{color:#e74c3c}
+
+.btn-row{display:flex;gap:8px}
+.btn-row .btn{flex:1}
+
+.no-access{text-align:center;padding:60px 20px}
+.no-access h2{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--red);margin-bottom:10px}
+
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="container">
+  <a href="admin.html" class="back">← Admin Panel</a>
+
+  <div id="noAccess" class="no-access hidden">
+    <h2>⛔ Admin Only</h2>
+    <p>This tool is restricted to administrators.</p>
+  </div>
+
+  <div id="mainContent" class="hidden">
+    <div class="title">Registry Geocoder</div>
+    <div class="subtitle">One-time setup: pre-geocode all addresses for fast search</div>
+
+    <div class="warning-box">
+      ⚠️ <strong>What this does:</strong> Loops through every Apiary &amp; Hyper address in your sheet, looks up the GPS coordinates, and saves them back into the Address column. After this completes, the Map shows all pins and Search runs in under a second.
+    </div>
+
+    <div class="info-box">
+      <strong>Speed:</strong> ~1.2 seconds per address (rate limited by OpenStreetMap free API).<br>
+      <strong>Estimated time:</strong> <span id="estTime">~10 minutes for 500 addresses</span>.<br>
+      <strong>Safe to pause:</strong> Click stop anytime &mdash; progress is saved per record.
+    </div>
+
+    <div class="card">
+      <div class="section-title">📊 Status</div>
+      <div class="stat-grid">
+        <div class="stat">
+          <div class="stat-num" id="totalCount">—</div>
+          <div class="stat-label">Total</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num warn" id="needCount">—</div>
+          <div class="stat-label">Need GPS</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num" id="doneCount">—</div>
+          <div class="stat-label">Have GPS</div>
+        </div>
+      </div>
+      <button class="btn" onclick="loadStatus()" id="loadBtn">↻ Refresh Status</button>
+    </div>
+
+    <div class="card hidden" id="actionCard">
+      <div class="section-title">🚀 Geocode</div>
+      
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-text" id="progressText">Ready to start</div>
+      <div class="eta-text" id="etaText"></div>
+
+      <div class="btn-row" style="margin-top:14px">
+        <button class="btn" id="startBtn" onclick="startGeocode()">▶️ Start Geocoding</button>
+        <button class="btn btn-danger hidden" id="stopBtn" onclick="stopGeocode()">⏸ Stop</button>
+      </div>
+
+      <div class="log hidden" id="log"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCtBCUuQAHuQ1O8V2sXoFYBcfaL_samV4o",
+  authDomain: "lpp-search.firebaseapp.com",
+  projectId: "lpp-search",
+  storageBucket: "lpp-search.firebasestorage.app",
+  messagingSenderId: "566058509628",
+  appId: "1:566058509628:web:beaf2b918377be9c152a39"
+};
+
+const SHEETS_API = "https://script.google.com/macros/s/AKfycbwprTx1etyHe9yszY5idPf0hs0nN_JAjEnd7R8Ua-OcgQmXvDV59EkncjgNS1vGuufkRQ/exec";
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+let currentUser = null;
+let running = false;
+let queue = [];
+let processed = 0;
+let total = 0;
+let successes = 0;
+let failures = 0;
+let startTime = 0;
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) { window.location.href = 'index.html'; return; }
+  currentUser = user;
+  const localUser = JSON.parse(localStorage.getItem('lpp_user') || '{}');
+  if (localUser.role !== 'admin') {
+    document.getElementById('noAccess').classList.remove('hidden');
+    return;
+  }
+  document.getElementById('mainContent').classList.remove('hidden');
+  loadStatus();
+});
+
+window.loadStatus = async function() {
+  const btn = document.getElementById('loadBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="btn-spinner"></span>Loading...';
+  
+  try {
+    // Get total count
+    const totalRes = await fetch(SHEETS_API + '?action=getRegistry');
+    const totalData = await totalRes.json();
+    const totalCount = totalData.records?.length || 0;
+    
+    // Get records needing geocoding
+    const needRes = await fetch(SHEETS_API + '?action=getUngeocodedRecords');
+    const needData = await needRes.json();
+    const needCount = needData.records?.length || 0;
+    
+    document.getElementById('totalCount').textContent = totalCount;
+    document.getElementById('needCount').textContent = needCount;
+    document.getElementById('doneCount').textContent = totalCount - needCount;
+    
+    const minutes = Math.ceil(needCount * 1.2 / 60);
+    document.getElementById('estTime').textContent = `~${minutes} minute${minutes !== 1 ? 's' : ''} for ${needCount} addresses`;
+    
+    if (needCount > 0) {
+      document.getElementById('actionCard').classList.remove('hidden');
+      queue = needData.records;
+      total = needCount;
+    } else {
+      document.getElementById('actionCard').classList.remove('hidden');
+      document.getElementById('progressText').textContent = '✓ All records already geocoded!';
+      document.getElementById('startBtn').disabled = true;
+      document.getElementById('startBtn').textContent = '✓ All Done';
+    }
+  } catch(e) {
+    alert('Failed to load status: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '↻ Refresh Status';
+  }
+};
+
+window.startGeocode = async function() {
+  if (queue.length === 0) {
+    alert('Nothing to geocode. Click Refresh Status first.');
+    return;
+  }
+  
+  running = true;
+  processed = 0;
+  successes = 0;
+  failures = 0;
+  startTime = Date.now();
+  
+  document.getElementById('startBtn').classList.add('hidden');
+  document.getElementById('stopBtn').classList.remove('hidden');
+  document.getElementById('log').classList.remove('hidden');
+  document.getElementById('log').innerHTML = '';
+  log('Starting geocoding of ' + queue.length + ' records...', 'ok');
+  
+  await processQueue();
+  
+  // Finished
+  running = false;
+  document.getElementById('startBtn').classList.remove('hidden');
+  document.getElementById('stopBtn').classList.add('hidden');
+  document.getElementById('startBtn').textContent = '▶️ Continue';
+  log(`\nDone! ${successes} succeeded, ${failures} failed`, successes > failures ? 'ok' : 'err');
+  
+  // Refresh status
+  setTimeout(() => loadStatus(), 500);
+};
+
+window.stopGeocode = function() {
+  running = false;
+  log('\nStopping...', 'skip');
+};
+
+async function processQueue() {
+  while (running && queue.length > 0) {
+    const record = queue.shift();
+    processed++;
+    
+    try {
+      const coords = await geocodeAddress(record.address);
+      if (coords) {
+        // Save to sheet
+        await saveCoords(record.tab, record.row, coords.lat, coords.lng);
+        successes++;
+        log(`✓ ${record.name} → ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`, 'ok');
+      } else {
+        await markFailed(record.tab, record.row);
+        failures++;
+        log(`✗ ${record.name} — address not found`, 'err');
+      }
+    } catch(e) {
+      failures++;
+      log(`✗ ${record.name} — ${e.message}`, 'err');
+    }
+    
+    updateProgress();
+    
+    // Rate limit: 1.2 seconds between requests
+    if (running && queue.length > 0) {
+      await sleep(1200);
+    }
+  }
+}
+
+async function geocodeAddress(address) {
+  // Clean up address - remove non-essential parts
+  const cleanAddr = address.replace(/^[^,]+,\s*/, '').trim() || address;
+  
+  // Try the original first, then a cleaned version
+  for (const tryAddr of [address, cleanAddr]) {
+    try {
+      const url = 'https://nominatim.openstreetmap.org/search?format=json&q=' 
+        + encodeURIComponent(tryAddr) + '&limit=1&countrycodes=us';
+      const res = await fetch(url, { headers: { 'User-Agent': 'LPP-Search/1.0' } });
+      const data = await res.json();
+      if (data && data.length > 0) {
+        return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      }
+    } catch(e) { /* try next */ }
+  }
+  return null;
+}
+
+async function saveCoords(tab, row, lat, lng) {
+  await fetch(SHEETS_API, {
+    method: 'POST',
+    mode: 'no-cors',
+    body: JSON.stringify({ action: 'updateRecordCoords', tab, row, lat, lng })
+  });
+}
+
+async function markFailed(tab, row) {
+  await fetch(SHEETS_API, {
+    method: 'POST',
+    mode: 'no-cors',
+    body: JSON.stringify({ action: 'updateRecordCoords', tab, row, failed: true })
+  });
+}
+
+function updateProgress() {
+  const pct = Math.round((processed / total) * 100);
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressText').textContent = `${processed} / ${total} (${pct}%)`;
+  
+  const elapsed = (Date.now() - startTime) / 1000;
+  const avgPerRecord = elapsed / processed;
+  const remaining = (total - processed) * avgPerRecord;
+  const mins = Math.floor(remaining / 60);
+  const secs = Math.round(remaining % 60);
+  document.getElementById('etaText').textContent = 
+    `Elapsed: ${formatTime(elapsed)} · Remaining: ~${mins}m ${secs}s · ${successes} OK, ${failures} failed`;
+}
+
+function formatTime(sec) {
+  const m = Math.floor(sec / 60);
+  const s = Math.round(sec % 60);
+  return `${m}m ${s}s`;
+}
+
+function log(msg, type) {
+  const logEl = document.getElementById('log');
+  const e = document.createElement('div');
+  e.className = 'log-entry ' + (type || '');
+  e.textContent = msg;
+  logEl.appendChild(e);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
+</script>
+</body>
+</html>

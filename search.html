@@ -237,8 +237,8 @@ onAuthStateChanged(auth, async (user) => {
 // ── Load registry ───────────────────────────────────────
 async function loadRegistry() {
   // Try cache first for instant load
-  const cached = localStorage.getItem('lpp_registry');
-  const cacheTime = localStorage.getItem('lpp_registry_time');
+  const cached = localStorage.getItem('lpp_registry_v2');
+  const cacheTime = localStorage.getItem('lpp_registry_v2_time');
   const now = Date.now();
   
   if (cached && cacheTime && (now - parseInt(cacheTime) < 86400000)) {
@@ -264,8 +264,8 @@ async function fetchRegistry() {
   const data = await res.json();
   if (!data.records) throw new Error('No records returned');
   registry = data.records;
-  localStorage.setItem('lpp_registry', JSON.stringify(registry));
-  localStorage.setItem('lpp_registry_time', Date.now().toString());
+  localStorage.setItem('lpp_registry_v2', JSON.stringify(registry));
+  localStorage.setItem('lpp_registry_v2_time', Date.now().toString());
 }
 
 function showMain() {
@@ -345,30 +345,26 @@ window.runSearch = async function() {
     }
     currentSearchPoint = point;
     
-    // Check all records — geocode address-only ones on the fly
+    // Check all records — assumes pre-geocoded (run Admin → Geocode Registry once)
     btn.innerHTML = '<span class="btn-spinner"></span>Checking radius...';
     
-    // Find nearby records — start with ones that already have coords
     const nearby = [];
     const RADIUS = 500;
+    let skippedNoCoords = 0;
     
-    for (let record of registry) {
-      // Only geocode records in nearby townships to save time
-      // For records without coords, geocode them
+    for (const record of registry) {
       if (!record.lat || !record.lng) {
-        // Skip for now — only check records with known coords
-        // (Most GPS Points have coords; addresses will be geocoded on demand)
-        try {
-          const r = await geocodeIfNeeded(record);
-          if (!r.lat) continue;
-          record = r;
-        } catch(e) { continue; }
+        skippedNoCoords++;
+        continue;
       }
-      
       const dist = distanceFeet(point.lat, point.lng, record.lat, record.lng);
       if (dist <= RADIUS) {
         nearby.push({ ...record, distance: Math.round(dist) });
       }
+    }
+    
+    if (skippedNoCoords > 0) {
+      console.warn(skippedNoCoords + ' records skipped (no GPS). Run Admin → Geocode Registry to fix.');
     }
     
     // Sort: hypers first, then by distance
