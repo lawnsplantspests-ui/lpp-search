@@ -346,12 +346,16 @@ function buildPopup(type, d) {
   const phones = [d.phoneDay, d.phoneNight, d.phoneAlt].filter(p => p);
   const phoneHtml = phones.map(p => `<a href="tel:${p.replace(/[^0-9]/g,'')}" style="color:#7ec850">${p}</a>`).join(' · ');
   
+  const editLink = (d.tab && d.row)
+    ? `<br><a href="edit.html" style="display:inline-block;margin-top:6px;font-size:11px;color:#5ba8e8;text-decoration:none;padding:3px 8px;border:1px solid rgba(58,141,222,0.3);border-radius:6px">✏️ Fix Location</a>`
+    : '';
+  
   return `<b>${type === 'hyper' ? '⚠️ HYPER' : '🐝 Apiary'}</b><br>
     <b style="font-size:14px">${escapeHtml(d.name)}</b><br>
     📍 ${escapeHtml(d.address)}<br>
     ${phoneHtml ? `📞 ${phoneHtml}<br>` : ''}
     ${d.email ? `✉️ <a href="mailto:${d.email}" style="color:#7ec850">${escapeHtml(d.email)}</a><br>` : ''}
-    <span style="font-size:11px;color:rgba(245,240,232,0.5)">${escapeHtml(d.township)}</span>`;
+    <span style="font-size:11px;color:rgba(245,240,232,0.5)">${escapeHtml(d.township)}</span>${editLink}`;
 }
 
 // ── Location tracking ──────────────────────────────────
