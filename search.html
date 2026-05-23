@@ -76,6 +76,16 @@ input::placeholder{color:rgba(245,240,232,0.25)}
 .log-btn{margin-top:12px;padding:10px 14px;width:100%;background:rgba(126,200,80,0.1);border:1px solid rgba(126,200,80,0.3);color:var(--lime);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;-webkit-appearance:none;transition:background 0.2s}
 .log-btn:active{background:rgba(126,200,80,0.2)}
 
+/* Post-search actions */
+.search-actions{display:flex;gap:8px;margin-top:14px;margin-bottom:14px}
+.search-action-btn{flex:1;padding:13px 8px;border-radius:12px;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;-webkit-appearance:none;display:flex;flex-direction:column;align-items:center;gap:4px;transition:transform 0.15s;text-decoration:none}
+.search-action-btn:active{transform:scale(0.97)}
+.search-action-btn .icon{font-size:18px;line-height:1}
+.search-action-btn .lbl{font-size:11px;letter-spacing:0.5px}
+.search-action-btn.swarm{background:linear-gradient(135deg,#7ec850,#2d7a47);color:var(--dark);border:none;box-shadow:0 4px 14px rgba(126,200,80,0.3)}
+.search-action-btn.map{background:rgba(58,141,222,0.15);color:#5ba8e8;border:1px solid rgba(58,141,222,0.35)}
+.search-action-btn.map:active{background:rgba(58,141,222,0.25)}
+
 /* Log dialog */
 .dialog-bg{position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);z-index:100;display:none;align-items:flex-end;justify-content:center;padding:20px;animation:fadeIn 0.2s ease}
 .dialog-bg.show{display:flex}
@@ -162,6 +172,30 @@ input::placeholder{color:rgba(245,240,232,0.25)}
     <div class="dialog-actions">
       <button class="btn-cancel" onclick="closeDialog()">Cancel</button>
       <button class="btn-save" onclick="saveContactLog()" id="saveLogBtn">Save Log</button>
+    </div>
+  </div>
+</div>
+
+<!-- Swarm log dialog -->
+<div class="dialog-bg" id="swarmDialogBg">
+  <div class="dialog">
+    <div class="dialog-title" style="color:#e8a020">🍯 Log Swarm</div>
+    <div class="dialog-sub" id="swarmDialogSub">At searched address</div>
+    <div class="form-group">
+      <label>Status</label>
+      <select id="swarmStatus" style="width:100%;padding:11px 14px;background:rgba(0,0,0,0.4);border:1px solid rgba(126,200,80,0.2);border-radius:10px;color:var(--cream);font-size:14px;font-family:'DM Sans',sans-serif;outline:none;-webkit-appearance:none">
+        <option value="Active">🟢 Active — Still there</option>
+        <option value="Retrieved">✅ Retrieved — Captured/relocated</option>
+        <option value="Gone">⚪ Gone — No longer present</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea id="swarmNotes" placeholder="Size, location specifics (tree branch, fence post), customer name, etc."></textarea>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn-cancel" onclick="closeSwarmDialog()">Cancel</button>
+      <button class="btn-save" onclick="saveSwarm()" id="saveSwarmBtn">Save Swarm</button>
     </div>
   </div>
 </div>
@@ -399,6 +433,20 @@ function displayResults(address, point, nearby) {
     html += renderContactCard(r);
   }
   
+  // Action buttons (always shown after a search)
+  html += `
+    <div class="search-actions">
+      <button class="search-action-btn swarm" onclick="openSwarmFromSearch()">
+        <span class="icon">🍯</span>
+        <span class="lbl">Log Swarm Here</span>
+      </button>
+      <a class="search-action-btn map" href="map.html">
+        <span class="icon">📍</span>
+        <span class="lbl">Open Live Map</span>
+      </a>
+    </div>
+  `;
+  
   resultArea.innerHTML = html;
   
   // Init map
@@ -510,6 +558,78 @@ window.saveContactLog = async function() {
   }
 };
 
+// ── Swarm dialog ─────────────────────────────────────────
+window.openSwarmFromSearch = function() {
+  if (!currentSearchPoint) {
+    alert('No search point set — please search an address first');
+    return;
+  }
+  document.getElementById('swarmDialogSub').textContent = document.getElementById('addressInput').value.trim();
+  document.getElementById('swarmStatus').value = 'Active';
+  document.getElementById('swarmNotes').value = '';
+  document.getElementById('swarmDialogBg').classList.add('show');
+};
+
+window.closeSwarmDialog = function() {
+  document.getElementById('swarmDialogBg').classList.remove('show');
+};
+
+window.saveSwarm = async function() {
+  if (!currentSearchPoint) return;
+  const btn = document.getElementById('saveSwarmBtn');
+  const status = document.getElementById('swarmStatus').value;
+  const notes = document.getElementById('swarmNotes').value.trim();
+  const address = document.getElementById('addressInput').value.trim();
+  
+  btn.disabled = true;
+  btn.innerHTML = '<span class="btn-spinner"></span>Saving...';
+  
+  const localUser = JSON.parse(localStorage.getItem('lpp_user') || '{}');
+  
+  // Find likely sources (apiaries within 2 miles)
+  const nearby = registry.filter(r => 
+    r.type === 'Apiary' && r.lat && r.lng &&
+    distanceFeet(currentSearchPoint.lat, currentSearchPoint.lng, r.lat, r.lng) <= 10560
+  ).map(r => r.name).slice(0, 5);
+  
+  try {
+    await fetch(SHEETS_API, {
+      method: 'POST',
+      mode: 'no-cors',
+      body: JSON.stringify({
+        action: 'addSwarm',
+        date: new Date().toISOString(),
+        address: address,
+        lat: currentSearchPoint.lat,
+        lng: currentSearchPoint.lng,
+        status: status,
+        notes: notes,
+        loggedBy: localUser.name || currentUser.email,
+        loggedByEmail: currentUser.email,
+        likelySource: nearby.join('; ')
+      })
+    });
+    
+    // Clear local swarms cache so map.html refreshes
+    localStorage.removeItem('lpp_swarms');
+    
+    closeSwarmDialog();
+    showToast('✓ Swarm logged');
+  } catch(e) {
+    alert('Failed to save: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Save Swarm';
+  }
+};
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
 function logSearchToSheet(address, point, nearby) {
   const localUser = JSON.parse(localStorage.getItem('lpp_user') || '{}');
   const hypers = nearby.filter(r => r.type === 'Hyper').length;
@@ -531,13 +651,6 @@ function logSearchToSheet(address, point, nearby) {
       result: result
     })
   }).catch(()=>{});
-}
-
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2200);
 }
 
 // Allow Enter to search
