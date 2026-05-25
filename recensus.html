@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LPP Search">
+<meta name="theme-color" content="#0d1f13">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Census Geocoder — LPP Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=DM+Mono&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--green:#1a4d2e;--green-mid:#2d7a47;--lime:#7ec850;--cream:#f5f0e8;--amber:#e8a020;--red:#c0392b;--dark:#0d1f13;--blue:#3a8dde;--border:rgba(126,200,80,0.25)}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);color:var(--cream)}
+.bg{position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse 80% 60% at 20% 10%,rgba(45,122,71,0.35) 0%,transparent 60%),radial-gradient(ellipse 60% 80% at 85% 90%,rgba(26,77,46,0.4) 0%,transparent 55%),radial-gradient(ellipse 100% 100% at 50% 50%,#0d1f13 0%,#060e09 100%)}
+.container{position:relative;z-index:10;max-width:480px;margin:0 auto;padding:18px 14px 40px;min-height:100vh}
+.back{display:inline-flex;align-items:center;gap:5px;color:var(--lime);text-decoration:none;font-size:13px;margin-bottom:14px;opacity:0.7;padding:8px 12px;background:rgba(126,200,80,0.05);border:1px solid rgba(126,200,80,0.15);border-radius:10px}
+.title{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:1px;line-height:1}
+.subtitle{font-size:13px;color:rgba(245,240,232,0.5);margin-bottom:18px}
+
+.info-box{background:rgba(58,141,222,0.08);border:1px solid rgba(58,141,222,0.25);border-radius:12px;padding:13px 16px;font-size:12.5px;line-height:1.5;color:rgba(245,240,232,0.78);margin-bottom:14px}
+.warning-box{background:rgba(232,160,32,0.08);border:1px solid rgba(232,160,32,0.3);border-radius:12px;padding:13px 16px;font-size:12.5px;line-height:1.5;color:var(--amber);margin-bottom:14px}
+
+.card{background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px}
+.section-title{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--lime);font-weight:700;margin-bottom:12px}
+
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
+.stat{background:rgba(0,0,0,0.3);border:1px solid rgba(126,200,80,0.15);border-radius:10px;padding:10px 4px;text-align:center}
+.stat-num{font-family:'Bebas Neue',sans-serif;font-size:22px;line-height:1;color:var(--lime)}
+.stat-num.warn{color:var(--amber)}
+.stat-num.err{color:#e74c3c}
+.stat-num.ok{color:var(--lime)}
+.stat-label{font-size:8.5px;letter-spacing:1px;text-transform:uppercase;color:rgba(245,240,232,0.5);margin-top:3px}
+
+.options{display:flex;gap:6px;margin:12px 0}
+.opt{flex:1;padding:9px 4px;background:rgba(0,0,0,0.3);border:1px solid rgba(126,200,80,0.15);border-radius:9px;color:rgba(245,240,232,0.55);font-size:11px;font-weight:600;cursor:pointer;text-align:center;font-family:'DM Sans',sans-serif;-webkit-appearance:none;line-height:1.3}
+.opt.active{background:linear-gradient(135deg,var(--green-mid),var(--green));color:var(--cream);border-color:var(--lime)}
+.opt-sub{display:block;font-size:9px;opacity:0.7;margin-top:2px;font-weight:400}
+
+.btn{width:100%;padding:13px;background:linear-gradient(135deg,var(--lime),var(--green-mid));color:var(--dark);font-size:14px;font-weight:700;letter-spacing:0.5px;border:none;border-radius:11px;cursor:pointer;font-family:'DM Sans',sans-serif;-webkit-appearance:none;box-shadow:0 4px 14px rgba(126,200,80,0.3)}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+.btn-secondary{background:rgba(58,141,222,0.15);color:#5ba8e8;border:1px solid rgba(58,141,222,0.4);box-shadow:none}
+.btn-danger{background:linear-gradient(135deg,#c0392b,#8b2e22);color:var(--cream);box-shadow:0 4px 14px rgba(192,57,43,0.3)}
+.btn-spinner{display:inline-block;width:13px;height:13px;border:2px solid rgba(13,31,19,0.3);border-top-color:var(--dark);border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:7px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.progress-bar{height:10px;background:rgba(0,0,0,0.4);border-radius:5px;overflow:hidden;margin:14px 0 6px}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--lime),var(--green-mid));width:0%;transition:width 0.3s}
+.progress-text{font-family:'DM Mono',monospace;font-size:11px;color:var(--lime);text-align:center;margin-bottom:6px}
+.eta-text{font-size:10.5px;color:rgba(245,240,232,0.45);text-align:center;font-family:'DM Mono',monospace}
+
+.log{background:rgba(0,0,0,0.5);border:1px solid rgba(126,200,80,0.1);border-radius:9px;padding:10px;font-family:'DM Mono',monospace;font-size:10px;line-height:1.5;max-height:280px;overflow-y:auto;margin-top:12px}
+.log-entry{padding:1px 0;color:rgba(245,240,232,0.65)}
+.log-entry.hi{color:var(--lime)}
+.log-entry.mid{color:#5ba8e8}
+.log-entry.low{color:var(--amber)}
+.log-entry.fail{color:#e74c3c}
+.log-entry.skip{color:rgba(245,240,232,0.4)}
+
+.btn-row{display:flex;gap:8px}
+.btn-row .btn{flex:1}
+
+.no-access{text-align:center;padding:60px 20px}
+.no-access h2{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--red);margin-bottom:10px}
+
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="container">
+  <a href="admin.html" class="back">← Admin Panel</a>
+
+  <div id="noAccess" class="no-access hidden">
+    <h2>⛔ Admin Only</h2>
+    <p>This tool is restricted to administrators.</p>
+  </div>
+
+  <div id="mainContent" class="hidden">
+    <div class="title">Census Geocoder</div>
+    <div class="subtitle">Re-geocode all records using free US Census API</div>
+
+    <div class="info-box">
+      🇺🇸 <strong>What this is:</strong> US Census Bureau's official geocoder. Government-built, designed for US addresses, completely free, no API key, no rate limits. Generally more accurate than OpenStreetMap for residential addresses in rural Pennsylvania.
+    </div>
+
+    <div class="warning-box">
+      ⏱️ <strong>Speed:</strong> ~0.5 sec per address. About <span id="estTime">10-15 minutes for 1,300+ records</span>. Keep this page open while running. Safe to stop and resume.
+    </div>
+
+    <div class="card">
+      <div class="section-title">📊 Current Status</div>
+      <div class="stat-grid">
+        <div class="stat">
+          <div class="stat-num" id="totalCount">—</div>
+          <div class="stat-label">Total</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num ok" id="hiCount">—</div>
+          <div class="stat-label">High Conf</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num" id="midCount">—</div>
+          <div class="stat-label">Med Conf</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num warn" id="loCount">—</div>
+          <div class="stat-label">Low/None</div>
+        </div>
+      </div>
+      <button class="btn btn-secondary" onclick="loadStatus()" id="loadBtn">↻ Refresh Status</button>
+    </div>
+
+    <div class="card hidden" id="actionCard">
+      <div class="section-title">🎯 Choose Scope</div>
+      <div class="options">
+        <button class="opt active" data-scope="all" onclick="setScope('all')">All Records<span class="opt-sub">Re-geocode everything</span></button>
+        <button class="opt" data-scope="missing" onclick="setScope('missing')">Missing/Low<span class="opt-sub">Only low-quality</span></button>
+        <button class="opt" data-scope="unverified" onclick="setScope('unverified')">Unverified<span class="opt-sub">Skip VERIFIED</span></button>
+      </div>
+      <div style="font-size:11px;color:rgba(245,240,232,0.5);margin-bottom:10px;line-height:1.4" id="scopeDesc">Will re-geocode all <span id="scopeCount">—</span> records, overwriting existing GPS. Records marked VERIFIED will be skipped.</div>
+    </div>
+
+    <div class="card hidden" id="runCard">
+      <div class="section-title">🚀 Run Geocoder</div>
+      
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-text" id="progressText">Ready to start</div>
+      <div class="eta-text" id="etaText"></div>
+
+      <div class="btn-row" style="margin-top:14px">
+        <button class="btn" id="startBtn" onclick="startGeocode()">▶️ Start</button>
+        <button class="btn btn-danger hidden" id="stopBtn" onclick="stopGeocode()">⏸ Stop</button>
+      </div>
+
+      <button class="btn btn-secondary" style="margin-top:8px" onclick="clearCache()">🗑 Clear App Cache</button>
+
+      <div class="log hidden" id="log"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCtBCUuQAHuQ1O8V2sXoFYBcfaL_samV4o",
+  authDomain: "lpp-search.firebaseapp.com",
+  projectId: "lpp-search",
+  storageBucket: "lpp-search.firebasestorage.app",
+  messagingSenderId: "566058509628",
+  appId: "1:566058509628:web:beaf2b918377be9c152a39"
+};
+const SHEETS_API = "https://script.google.com/macros/s/AKfycbyeR2077xnXKZxXIs9Ci4mJh68Qh1K4WL4YHLyun6ubhnxda10J5Pu1VFsqsmZVbhA0/exec";
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+let currentUser = null;
+let allRecords = [];
+let queue = [];
+let running = false;
+let scope = 'all';
+let stats = { hi: 0, mid: 0, lo: 0, fail: 0, total: 0, skipped: 0 };
+let startTime = 0;
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) { window.location.href = 'index.html'; return; }
+  currentUser = user;
+  const localUser = JSON.parse(localStorage.getItem('lpp_user') || '{}');
+  if (localUser.role !== 'admin') {
+    document.getElementById('noAccess').classList.remove('hidden');
+    return;
+  }
+  document.getElementById('mainContent').classList.remove('hidden');
+  loadStatus();
+});
+
+window.loadStatus = async function() {
+  const btn = document.getElementById('loadBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="btn-spinner"></span>Loading…';
+  
+  try {
+    const res = await fetch(SHEETS_API + '?action=getRegistry');
+    const data = await res.json();
+    allRecords = data.records || [];
+    
+    let hi = 0, mid = 0, lo = 0;
+    for (const r of allRecords) {
+      const c = String(r.confidence || '').toUpperCase();
+      if (c === 'HIGH' || c === 'ROOFTOP' || c === 'EXACT') hi++;
+      else if (c === 'MEDIUM' || c === 'PARCEL' || c === 'STREET') mid++;
+      else lo++;
+    }
+    
+    document.getElementById('totalCount').textContent = allRecords.length;
+    document.getElementById('hiCount').textContent = hi;
+    document.getElementById('midCount').textContent = mid;
+    document.getElementById('loCount').textContent = lo;
+    
+    const mins = Math.ceil(allRecords.length * 0.6 / 60);
+    document.getElementById('estTime').textContent = `~${mins} minutes for ${allRecords.length} records`;
+    
+    document.getElementById('actionCard').classList.remove('hidden');
+    document.getElementById('runCard').classList.remove('hidden');
+    setScope(scope);
+  } catch(e) {
+    alert('Failed: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '↻ Refresh Status';
+  }
+};
+
+window.setScope = function(s) {
+  scope = s;
+  document.querySelectorAll('.opt').forEach(o => o.classList.toggle('active', o.dataset.scope === s));
+  
+  let records = allRecords.slice();
+  if (s === 'missing') {
+    records = records.filter(r => {
+      const c = String(r.confidence || '').toUpperCase();
+      return !c || c === 'LOW' || c === 'ZIP' || !r.lat;
+    });
+  } else if (s === 'unverified') {
+    records = records.filter(r => !String(r.verified || '').toUpperCase().includes('VERIFIED'));
+  }
+  
+  queue = records;
+  document.getElementById('scopeCount').textContent = records.length;
+  
+  if (s === 'all') document.getElementById('scopeDesc').innerHTML = 
+    `Re-geocode all <span style="color:var(--lime);font-weight:700">${records.length}</span> records. Records marked VERIFIED will be skipped automatically.`;
+  else if (s === 'missing') document.getElementById('scopeDesc').innerHTML = 
+    `Only re-geocode <span style="color:var(--amber);font-weight:700">${records.length}</span> records with low confidence or no GPS.`;
+  else document.getElementById('scopeDesc').innerHTML = 
+    `Re-geocode <span style="color:var(--lime);font-weight:700">${records.length}</span> records that haven't been manually verified.`;
+};
+
+window.startGeocode = async function() {
+  if (queue.length === 0) { alert('Nothing in queue'); return; }
+  if (!confirm(`Re-geocode ${queue.length} records?\n\nThis will overwrite existing GPS coords for non-verified records. Verified records are always skipped.\n\nEstimated time: ${Math.ceil(queue.length * 0.6 / 60)} minutes.`)) return;
+  
+  running = true;
+  stats = { hi: 0, mid: 0, lo: 0, fail: 0, total: queue.length, skipped: 0, processed: 0 };
+  startTime = Date.now();
+  
+  document.getElementById('startBtn').classList.add('hidden');
+  document.getElementById('stopBtn').classList.remove('hidden');
+  document.getElementById('log').classList.remove('hidden');
+  document.getElementById('log').innerHTML = '';
+  log('▶ Starting US Census geocoder for ' + queue.length + ' records…', 'hi');
+  
+  await processQueue();
+  
+  running = false;
+  document.getElementById('startBtn').classList.remove('hidden');
+  document.getElementById('stopBtn').classList.add('hidden');
+  document.getElementById('startBtn').textContent = '▶️ Run Again';
+  
+  log(`\n✓ Done!  ${stats.hi} high  ·  ${stats.mid} medium  ·  ${stats.lo} low  ·  ${stats.fail} failed  ·  ${stats.skipped} skipped (verified)`, 'hi');
+  setTimeout(() => loadStatus(), 800);
+};
+
+window.stopGeocode = function() {
+  running = false;
+  log('\n⏸ Stopping…', 'skip');
+};
+
+window.clearCache = function() {
+  if (!confirm('Clear app cache so Map/Search reload fresh data?')) return;
+  const keys = ['lpp_registry','lpp_registry_v2'];
+  keys.forEach(k => {
+    localStorage.removeItem(k);
+    localStorage.removeItem(k+'_time');
+  });
+  Object.keys(localStorage).forEach(k => {
+    if (k.startsWith('geo_')) localStorage.removeItem(k);
+  });
+  alert('✓ Cache cleared');
+};
+
+async function processQueue() {
+  const queueCopy = queue.slice();
+  for (let i = 0; i < queueCopy.length; i++) {
+    if (!running) break;
+    const r = queueCopy[i];
+    stats.processed = i + 1;
+    
+    // Skip already-verified
+    if (String(r.verified || '').toUpperCase().includes('VERIFIED')) {
+      stats.skipped++;
+      log(`⊘ ${r.name} — already VERIFIED, skipped`, 'skip');
+      updateProgress();
+      continue;
+    }
+    
+    try {
+      const result = await censusGeocode(r.address);
+      if (result) {
+        await saveResult(r, result.lat, result.lng, result.confidence);
+        const cls = result.confidence === 'HIGH' ? 'hi' : result.confidence === 'MEDIUM' ? 'mid' : 'low';
+        if (cls === 'hi') stats.hi++; else if (cls === 'mid') stats.mid++; else stats.lo++;
+        log(`${cls === 'hi' ? '✓' : cls === 'mid' ? '~' : '?'} [${result.confidence}] ${r.name} → ${result.lat.toFixed(5)}, ${result.lng.toFixed(5)}`, cls);
+      } else {
+        stats.fail++;
+        log(`✗ FAIL ${r.name} — Census couldn't find address`, 'fail');
+      }
+    } catch(e) {
+      stats.fail++;
+      log(`✗ ERR ${r.name} — ${e.message}`, 'fail');
+    }
+    
+    updateProgress();
+    if (running && i < queueCopy.length - 1) await sleep(400);
+  }
+}
+
+async function censusGeocode(address) {
+  // Strip embedded coords first
+  const clean = String(address || '').replace(/,?\s*-?\d+\.\d+,\s*-?\d+\.\d+\s*$/, '').trim();
+  if (!clean) return null;
+  
+  // Census API: https://geocoding.geo.census.gov/geocoder/locations/onelineaddress
+  const url = 'https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=' 
+    + encodeURIComponent(clean) + '&benchmark=Public_AR_Current&format=json';
+  
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    const matches = data?.result?.addressMatches || [];
+    if (matches.length === 0) return null;
+    
+    const m = matches[0];
+    const lat = parseFloat(m.coordinates.y);
+    const lng = parseFloat(m.coordinates.x);
+    
+    // Determine confidence based on match type
+    // Census returns "Exact" or "Non_Exact" in tigerLine.side typically
+    // Better signal: side and matchedAddress completeness
+    let confidence = 'LOW';
+    const matched = (m.matchedAddress || '').toUpperCase();
+    const matchType = (m.tigerLine?.side || '').toUpperCase();
+    const hasNumber = /^\d+\s/.test(matched);
+    
+    if (hasNumber && matchType === 'L' || matchType === 'R') {
+      // Has a house number and matched to a specific side of the street
+      confidence = 'HIGH';
+    } else if (hasNumber) {
+      confidence = 'MEDIUM';
+    } else {
+      confidence = 'LOW';
+    }
+    
+    return { lat, lng, confidence, matched: m.matchedAddress };
+  } catch(e) {
+    throw new Error('Census API error: ' + e.message);
+  }
+}
+
+async function saveResult(record, lat, lng, confidence) {
+  await fetch(SHEETS_API, {
+    method: 'POST', mode: 'no-cors',
+    body: JSON.stringify({
+      action: 'updateRecordLocation',
+      tab: record.tab, row: record.row,
+      lat: lat, lng: lng,
+      confidence: confidence
+    })
+  });
+}
+
+function updateProgress() {
+  const pct = Math.round((stats.processed / stats.total) * 100);
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressText').textContent = 
+    `${stats.processed} / ${stats.total} (${pct}%)  ·  ${stats.hi} hi  ${stats.mid} med  ${stats.lo} lo  ${stats.fail} fail`;
+  
+  const elapsed = (Date.now() - startTime) / 1000;
+  if (stats.processed > 0) {
+    const remaining = (stats.total - stats.processed) * (elapsed / stats.processed);
+    const mins = Math.floor(remaining / 60);
+    const secs = Math.round(remaining % 60);
+    document.getElementById('etaText').textContent = `Remaining: ~${mins}m ${secs}s`;
+  }
+}
+
+function log(msg, type) {
+  const logEl = document.getElementById('log');
+  const e = document.createElement('div');
+  e.className = 'log-entry ' + (type || '');
+  e.textContent = msg;
+  logEl.appendChild(e);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+</script>
+</body>
+</html>
