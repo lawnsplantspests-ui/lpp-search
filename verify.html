@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LPP Search">
+<meta name="theme-color" content="#0d1f13">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Verify Locations — LPP</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=DM+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--green:#1a4d2e;--green-mid:#2d7a47;--lime:#7ec850;--cream:#f5f0e8;--amber:#e8a020;--red:#c0392b;--dark:#0d1f13;--blue:#3a8dde;--border:rgba(126,200,80,0.25)}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);color:var(--cream);overflow:hidden}
+.bg{position:fixed;inset:0;z-index:0;background:#0d1f13}
+.app{position:relative;z-index:10;height:100vh;display:flex;flex-direction:column}
+
+.topbar{padding:10px 12px;display:flex;align-items:center;gap:10px;background:rgba(13,31,19,0.95);border-bottom:1px solid var(--border);z-index:50}
+.back{display:inline-flex;align-items:center;gap:4px;color:var(--lime);text-decoration:none;font-size:13px;padding:6px 10px;background:rgba(126,200,80,0.05);border:1px solid rgba(126,200,80,0.15);border-radius:9px;flex-shrink:0}
+.progress{flex:1;display:flex;flex-direction:column;gap:3px}
+.progress-text{font-size:11px;color:rgba(245,240,232,0.6);font-family:'DM Mono',monospace}
+.progress-bar{height:5px;background:rgba(0,0,0,0.4);border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--lime),var(--green-mid));width:0%;transition:width 0.3s}
+
+.filter-tabs{display:flex;gap:4px;padding:8px 12px;background:rgba(13,31,19,0.95);border-bottom:1px solid var(--border)}
+.ftab{flex:1;padding:7px 4px;font-size:10px;font-weight:700;letter-spacing:0.5px;border:none;background:rgba(0,0,0,0.3);color:rgba(245,240,232,0.5);border-radius:7px;cursor:pointer;text-transform:uppercase;font-family:'DM Sans',sans-serif;-webkit-appearance:none}
+.ftab.active{background:linear-gradient(135deg,var(--green-mid),var(--green));color:var(--cream)}
+
+.record-info{padding:10px 14px;background:rgba(0,0,0,0.3);border-bottom:1px solid var(--border);flex-shrink:0}
+.rec-row1{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px}
+.rec-name{font-size:15px;font-weight:700;line-height:1.2;flex:1}
+.rec-badges{display:flex;gap:4px;flex-shrink:0}
+.rec-badge{font-size:8px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;padding:3px 7px;border-radius:4px;white-space:nowrap}
+.badge-apiary{background:rgba(232,160,32,0.2);color:var(--amber)}
+.badge-hyper{background:rgba(192,57,43,0.2);color:#e74c3c}
+.badge-verified{background:rgba(126,200,80,0.2);color:var(--lime)}
+.badge-clustered{background:rgba(232,160,32,0.25);color:var(--amber)}
+.rec-addr{font-size:12px;color:rgba(245,240,232,0.7);line-height:1.35}
+.rec-meta{font-size:10px;color:rgba(245,240,232,0.4);font-family:'DM Mono',monospace;margin-top:3px}
+
+#mapWrap{flex:1;position:relative;background:#1a2620;min-height:0}
+#map{position:absolute;inset:0}
+.map-instructions{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.7);color:var(--cream);padding:6px 12px;border-radius:14px;font-size:11px;z-index:500;pointer-events:none}
+.layer-toggle{position:absolute;top:8px;right:8px;z-index:500;display:flex;flex-direction:column;gap:4px}
+.layer-btn{padding:7px 10px;background:rgba(13,31,19,0.92);color:var(--cream);border:1px solid var(--border);border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;-webkit-appearance:none}
+.layer-btn.active{background:var(--lime);color:var(--dark);border-color:var(--lime)}
+
+.action-bar{padding:10px 12px 12px;background:rgba(13,31,19,0.97);border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px;flex-shrink:0}
+.btn-row{display:flex;gap:6px}
+.btn-row .btn{flex:1}
+.btn{padding:13px 8px;font-size:13px;font-weight:700;border:none;border-radius:10px;cursor:pointer;font-family:'DM Sans',sans-serif;-webkit-appearance:none;letter-spacing:0.3px}
+.btn-verify{background:linear-gradient(135deg,var(--lime),var(--green-mid));color:var(--dark);box-shadow:0 3px 12px rgba(126,200,80,0.3)}
+.btn-skip{background:rgba(245,240,232,0.08);color:rgba(245,240,232,0.7);border:1px solid rgba(245,240,232,0.15)}
+.btn-fix{background:rgba(232,160,32,0.15);color:var(--amber);border:1px solid rgba(232,160,32,0.4)}
+.btn-google{background:rgba(58,141,222,0.15);color:#5ba8e8;border:1px solid rgba(58,141,222,0.4)}
+.btn-prev{background:rgba(0,0,0,0.3);color:rgba(245,240,232,0.6);border:1px solid rgba(245,240,232,0.1);flex:0 0 auto;padding:13px 14px}
+.btn:active{transform:scale(0.97)}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+.btn-spinner{display:inline-block;width:12px;height:12px;border:2px solid rgba(0,0,0,0.3);border-top-color:currentColor;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.fix-panel{display:none;flex-direction:column;gap:8px}
+.fix-panel.show{display:flex}
+.fix-label{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--lime);opacity:0.8}
+.coord-row{display:flex;gap:6px}
+.coord-row input{flex:1;padding:9px 10px;background:rgba(0,0,0,0.4);border:1px solid rgba(126,200,80,0.2);border-radius:8px;color:var(--cream);font-family:'DM Mono',monospace;font-size:12px;outline:none;-webkit-appearance:none}
+.coord-row input:focus{border-color:var(--lime)}
+.help{font-size:10px;color:rgba(245,240,232,0.45);line-height:1.4}
+
+.loading{display:flex;align-items:center;justify-content:center;flex:1;flex-direction:column;gap:14px;color:rgba(245,240,232,0.6);font-size:13px}
+.loading-spinner{width:32px;height:32px;border:3px solid rgba(126,200,80,0.2);border-top-color:var(--lime);border-radius:50%;animation:spin 0.8s linear infinite}
+
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:30px;text-align:center;gap:14px}
+.empty-emoji{font-size:48px}
+.empty-title{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1px}
+.empty-msg{color:rgba(245,240,232,0.6);font-size:13px;line-height:1.5;max-width:280px}
+
+.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(13,31,19,0.95);border:1px solid var(--lime);color:var(--lime);padding:14px 22px;border-radius:12px;font-size:14px;font-weight:700;z-index:1000;display:none;box-shadow:0 8px 32px rgba(0,0,0,0.5)}
+.toast.err{border-color:#e74c3c;color:#e74c3c}
+.toast.show{display:block;animation:popIn 0.25s}
+@keyframes popIn{from{transform:translate(-50%,-50%) scale(0.85);opacity:0}to{transform:translate(-50%,-50%) scale(1);opacity:1}}
+
+.no-access{text-align:center;padding:60px 20px}
+.no-access h2{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--red);margin-bottom:10px}
+
+.leaflet-container{background:#1a2620;font-family:'DM Sans',sans-serif}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="app">
+  <div class="topbar">
+    <a href="index.html" class="back">←</a>
+    <div class="progress">
+      <div class="progress-text" id="progressText">Loading…</div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+  </div>
+
+  <div class="filter-tabs" id="filterTabs">
+    <button class="ftab active" data-filter="unverified" onclick="setFilter('unverified')">⏳ To Verify</button>
+    <button class="ftab" data-filter="clusters" onclick="setFilter('clusters')">⚠️ Clusters</button>
+    <button class="ftab" data-filter="nogps" onclick="setFilter('nogps')">❌ No GPS</button>
+    <button class="ftab" data-filter="all" onclick="setFilter('all')">📋 All</button>
+  </div>
+
+  <div id="noAccess" class="no-access hidden">
+    <h2>⛔ Admin Only</h2>
+    <p>This tool is restricted to administrators.</p>
+  </div>
+
+  <div id="mainContent" style="display:flex;flex-direction:column;flex:1;min-height:0">
+    <div class="record-info" id="recordInfo">
+      <div class="rec-row1">
+        <div class="rec-name" id="recName">—</div>
+        <div class="rec-badges" id="recBadges"></div>
+      </div>
+      <div class="rec-addr" id="recAddr">—</div>
+      <div class="rec-meta" id="recMeta">—</div>
+    </div>
+
+    <div id="mapWrap">
+      <div id="map"></div>
+      <div class="map-instructions" id="mapHint">Tap and drag the pin to fix</div>
+      <div class="layer-toggle">
+        <button class="layer-btn" id="layerSatellite" onclick="setLayer('satellite')">🛰️ Satellite</button>
+        <button class="layer-btn active" id="layerStreet" onclick="setLayer('street')">🗺️ Street</button>
+      </div>
+    </div>
+
+    <div class="action-bar" id="actionBar">
+      <div class="btn-row" id="primaryButtons">
+        <button class="btn btn-prev" onclick="previousRecord()" id="prevBtn">←</button>
+        <button class="btn btn-verify" onclick="verifyCurrent()" id="verifyBtn">✓ Looks Right</button>
+        <button class="btn btn-fix" onclick="toggleFix()" id="fixBtn">✏️ Fix</button>
+        <button class="btn btn-skip" onclick="skipRecord()" id="skipBtn">⤳ Skip</button>
+      </div>
+
+      <div class="fix-panel" id="fixPanel">
+        <div class="help">Drag the pin on map, or get coords from Google Maps (right-click → click lat/lng) and paste below:</div>
+        <div class="coord-row">
+          <input type="text" id="manualLat" placeholder="Latitude" inputmode="decimal">
+          <input type="text" id="manualLng" placeholder="Longitude" inputmode="decimal">
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-google" onclick="openGoogleMaps()" id="gmBtn">🗺 Open in Google Maps</button>
+          <button class="btn btn-verify" onclick="saveFix()" id="saveFixBtn">💾 Save &amp; Verify</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="loadingScreen" class="loading">
+    <div class="loading-spinner"></div>
+    <div id="loadingText">Loading registry…</div>
+  </div>
+
+  <div id="emptyScreen" class="empty-state hidden">
+    <div class="empty-emoji">🎉</div>
+    <div class="empty-title">All Verified!</div>
+    <div class="empty-msg">Every pin in this list has been confirmed. Switch filters above to verify more.</div>
+  </div>
+</div>
+
+<div class="toast" id="toast">✓ Verified</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCtBCUuQAHuQ1O8V2sXoFYBcfaL_samV4o",
+  authDomain: "lpp-search.firebaseapp.com",
+  projectId: "lpp-search",
+  storageBucket: "lpp-search.firebasestorage.app",
+  messagingSenderId: "566058509628",
+  appId: "1:566058509628:web:beaf2b918377be9c152a39"
+};
+const SHEETS_API = "https://script.google.com/macros/s/AKfycbyeR2077xnXKZxXIs9Ci4mJh68Qh1K4WL4YHLyun6ubhnxda10J5Pu1VFsqsmZVbhA0/exec";
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+let currentUser = null;
+let userName = '';
+let allRecords = [];
+let queue = [];
+let currentIndex = 0;
+let history = [];
+let clusters = {};
+let currentFilter = 'unverified';
+let map = null;
+let marker = null;
+let streetLayer = null;
+let satLayer = null;
+let currentLayer = 'street';
+let mapInitDelay = null;
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) { window.location.href = 'index.html'; return; }
+  currentUser = user;
+  const localUser = JSON.parse(localStorage.getItem('lpp_user') || '{}');
+  userName = localUser.name || user.email;
+  if (localUser.role !== 'admin') {
+    document.getElementById('mainContent').style.display = 'none';
+    document.getElementById('loadingScreen').classList.add('hidden');
+    document.getElementById('noAccess').classList.remove('hidden');
+    return;
+  }
+  await loadRegistry();
+});
+
+async function loadRegistry() {
+  try {
+    const res = await fetch(SHEETS_API + '?action=getRegistry');
+    const data = await res.json();
+    allRecords = data.records || [];
+    findClusters();
+    buildQueue();
+    document.getElementById('loadingScreen').classList.add('hidden');
+    showCurrent();
+  } catch(e) {
+    document.getElementById('loadingText').textContent = '⚠️ ' + e.message;
+  }
+}
+
+function findClusters() {
+  clusters = {};
+  for (const r of allRecords) {
+    if (!r.lat || !r.lng) continue;
+    const key = r.lat.toFixed(4) + ',' + r.lng.toFixed(4);
+    if (!clusters[key]) clusters[key] = [];
+    clusters[key].push(r);
+  }
+}
+
+function isClustered(r) {
+  if (!r.lat || !r.lng) return false;
+  const key = r.lat.toFixed(4) + ',' + r.lng.toFixed(4);
+  return (clusters[key]?.length || 0) >= 3;
+}
+
+function buildQueue() {
+  let records = allRecords.slice();
+  
+  if (currentFilter === 'unverified') {
+    // Has GPS but not verified yet
+    records = records.filter(r => r.lat && r.lng && !String(r.verified || '').toUpperCase().includes('VERIFIED'));
+  } else if (currentFilter === 'clusters') {
+    records = records.filter(r => isClustered(r));
+  } else if (currentFilter === 'nogps') {
+    records = records.filter(r => !r.lat || !r.lng);
+  }
+  // 'all' keeps everything
+  
+  // Sort: clusters first (biggest clusters), then no-gps, then by name
+  records.sort((a, b) => {
+    const aCluster = isClustered(a) ? (clusters[a.lat.toFixed(4)+','+a.lng.toFixed(4)]?.length || 0) : 0;
+    const bCluster = isClustered(b) ? (clusters[b.lat.toFixed(4)+','+b.lng.toFixed(4)]?.length || 0) : 0;
+    if (aCluster !== bCluster) return bCluster - aCluster;
+    const aNoGps = !a.lat ? 1 : 0;
+    const bNoGps = !b.lat ? 1 : 0;
+    if (aNoGps !== bNoGps) return bNoGps - aNoGps;
+    return (a.name || '').localeCompare(b.name || '');
+  });
+  
+  queue = records;
+  currentIndex = 0;
+}
+
+window.setFilter = function(f) {
+  currentFilter = f;
+  document.querySelectorAll('.ftab').forEach(t => {
+    t.classList.toggle('active', t.dataset.filter === f);
+  });
+  buildQueue();
+  history = [];
+  showCurrent();
+};
+
+function showCurrent() {
+  if (queue.length === 0 || currentIndex >= queue.length) {
+    document.getElementById('emptyScreen').classList.remove('hidden');
+    document.getElementById('recordInfo').style.display = 'none';
+    document.getElementById('mapWrap').style.display = 'none';
+    document.getElementById('actionBar').style.display = 'none';
+    return;
+  }
+  document.getElementById('emptyScreen').classList.add('hidden');
+  document.getElementById('recordInfo').style.display = 'block';
+  document.getElementById('mapWrap').style.display = 'block';
+  document.getElementById('actionBar').style.display = 'flex';
+
+  const r = queue[currentIndex];
+  
+  // Progress
+  document.getElementById('progressText').textContent = 
+    `${currentIndex + 1} / ${queue.length} · ${currentFilter}`;
+  document.getElementById('progressFill').style.width = 
+    Math.round(((currentIndex + 1) / queue.length) * 100) + '%';
+  
+  // Record info
+  document.getElementById('recName').textContent = r.name;
+  const cleanAddr = (r.address || '').replace(/,?\s*-?\d+\.\d+,\s*-?\d+\.\d+\s*$/, '').trim() || '(no address)';
+  document.getElementById('recAddr').textContent = cleanAddr + ' · ' + r.township;
+  
+  let meta = '';
+  if (r.lat) meta = `📍 ${r.lat.toFixed(5)}, ${r.lng.toFixed(5)}`;
+  else meta = '⚠️ No GPS coords';
+  if (isClustered(r)) {
+    const size = clusters[r.lat.toFixed(4)+','+r.lng.toFixed(4)].length;
+    meta += ` · ⚠️ stacked with ${size - 1} others`;
+  }
+  document.getElementById('recMeta').textContent = meta;
+  
+  // Badges
+  let badges = '';
+  badges += `<span class="rec-badge badge-${r.type.toLowerCase()}">${r.type === 'Hyper' ? '⚠️ HYPER' : '🐝 APIARY'}</span>`;
+  if (String(r.verified || '').toUpperCase().includes('VERIFIED')) badges += '<span class="rec-badge badge-verified">✓ VERIFIED</span>';
+  if (isClustered(r)) badges += '<span class="rec-badge badge-clustered">CLUSTER</span>';
+  document.getElementById('recBadges').innerHTML = badges;
+  
+  // Reset fix panel
+  document.getElementById('fixPanel').classList.remove('show');
+  document.getElementById('manualLat').value = '';
+  document.getElementById('manualLng').value = '';
+  
+  // Init/update map
+  if (mapInitDelay) clearTimeout(mapInitDelay);
+  mapInitDelay = setTimeout(() => initMap(r), 50);
+}
+
+function initMap(r) {
+  const lat = r.lat || 40.27;
+  const lng = r.lng || -76.88;
+  const zoom = r.lat ? 18 : 11;
+  
+  if (!map) {
+    map = L.map('map', { zoomControl: true, attributionControl: false }).setView([lat, lng], zoom);
+    streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+    satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
+  } else {
+    map.setView([lat, lng], zoom);
+  }
+  
+  if (marker) marker.remove();
+  
+  const icon = L.divIcon({
+    className: 'verify-marker',
+    html: `<div style="background:${r.type==='Hyper'?'#c0392b':'#e8a020'};width:32px;height:32px;border-radius:50%;border:4px solid #fff;box-shadow:0 4px 14px rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px">${r.type==='Hyper'?'!':'🐝'}</div>`,
+    iconSize: [32, 32], iconAnchor: [16, 16]
+  });
+  
+  marker = L.marker([lat, lng], { icon, draggable: true }).addTo(map);
+  marker.on('drag', (e) => {
+    const p = e.target.getLatLng();
+    document.getElementById('manualLat').value = p.lat.toFixed(6);
+    document.getElementById('manualLng').value = p.lng.toFixed(6);
+    if (!document.getElementById('fixPanel').classList.contains('show')) {
+      document.getElementById('fixPanel').classList.add('show');
+    }
+  });
+  
+  setTimeout(() => map.invalidateSize(), 100);
+}
+
+window.setLayer = function(which) {
+  currentLayer = which;
+  document.getElementById('layerStreet').classList.toggle('active', which === 'street');
+  document.getElementById('layerSatellite').classList.toggle('active', which === 'satellite');
+  if (!map) return;
+  if (which === 'satellite') {
+    if (map.hasLayer(streetLayer)) map.removeLayer(streetLayer);
+    if (!map.hasLayer(satLayer)) satLayer.addTo(map);
+  } else {
+    if (map.hasLayer(satLayer)) map.removeLayer(satLayer);
+    if (!map.hasLayer(streetLayer)) streetLayer.addTo(map);
+  }
+};
+
+window.verifyCurrent = async function() {
+  const r = queue[currentIndex];
+  if (!r.lat) { showToast('No GPS to verify — use Fix instead', 'err'); return; }
+  
+  const btn = document.getElementById('verifyBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="btn-spinner"></span>Saving…';
+  
+  try {
+    await fetch(SHEETS_API, {
+      method: 'POST', mode: 'no-cors',
+      body: JSON.stringify({
+        action: 'verifyRecord',
+        tab: r.tab, row: r.row, status: 'VERIFIED'
+      })
+    });
+    await fetch(SHEETS_API, {
+      method: 'POST', mode: 'no-cors',
+      body: JSON.stringify({
+        action: 'logLocationFix',
+        userEmail: currentUser.email, userName: userName,
+        tab: r.tab, row: r.row, recordName: r.name,
+        oldLat: r.lat, oldLng: r.lng, newLat: r.lat, newLng: r.lng,
+        method: 'verified-no-change'
+      })
+    });
+    r.verified = 'VERIFIED';
+    showToast('✓ Verified');
+    advance();
+  } catch(e) {
+    showToast('Failed: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '✓ Looks Right';
+  }
+};
+
+window.skipRecord = function() {
+  advance();
+};
+
+window.previousRecord = function() {
+  if (history.length === 0) {
+    showToast('No previous record', 'err');
+    return;
+  }
+  currentIndex = history.pop();
+  showCurrent();
+};
+
+function advance() {
+  history.push(currentIndex);
+  currentIndex++;
+  showCurrent();
+}
+
+window.toggleFix = function() {
+  const panel = document.getElementById('fixPanel');
+  panel.classList.toggle('show');
+  if (panel.classList.contains('show')) {
+    const r = queue[currentIndex];
+    if (r.lat) {
+      document.getElementById('manualLat').value = r.lat.toFixed(6);
+      document.getElementById('manualLng').value = r.lng.toFixed(6);
+    }
+  }
+};
+
+window.openGoogleMaps = function() {
+  const r = queue[currentIndex];
+  const cleanAddr = (r.address || '').replace(/,?\s*-?\d+\.\d+,\s*-?\d+\.\d+\s*$/, '').trim();
+  const url = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(cleanAddr);
+  window.open(url, '_blank');
+};
+
+window.saveFix = async function() {
+  const r = queue[currentIndex];
+  const lat = parseFloat(document.getElementById('manualLat').value);
+  const lng = parseFloat(document.getElementById('manualLng').value);
+  if (isNaN(lat) || isNaN(lng)) { showToast('Invalid coords', 'err'); return; }
+  if (lat < 39 || lat > 42 || lng > -74 || lng < -81) {
+    if (!confirm('These coords look outside PA. Save anyway?')) return;
+  }
+  
+  const btn = document.getElementById('saveFixBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="btn-spinner"></span>Saving…';
+  
+  try {
+    // Save coords + mark verified in one call
+    await fetch(SHEETS_API, {
+      method: 'POST', mode: 'no-cors',
+      body: JSON.stringify({
+        action: 'updateRecordLocation',
+        tab: r.tab, row: r.row,
+        lat: lat, lng: lng, verified: true
+      })
+    });
+    
+    await fetch(SHEETS_API, {
+      method: 'POST', mode: 'no-cors',
+      body: JSON.stringify({
+        action: 'logLocationFix',
+        userEmail: currentUser.email, userName: userName,
+        tab: r.tab, row: r.row, recordName: r.name,
+        oldLat: r.lat, oldLng: r.lng, newLat: lat, newLng: lng,
+        method: 'manual-fix-verified'
+      })
+    });
+    
+    r.lat = lat; r.lng = lng; r.verified = 'VERIFIED';
+    
+    // Clear app cache so next Map/Search loads fresh
+    ['lpp_registry','lpp_registry_v2'].forEach(k => {
+      localStorage.removeItem(k);
+      localStorage.removeItem(k+'_time');
+    });
+    
+    showToast('✓ Fixed &amp; Verified');
+    advance();
+  } catch(e) {
+    showToast('Failed: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '💾 Save &amp; Verify';
+  }
+};
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type === 'err' ? ' err' : '');
+  setTimeout(() => t.classList.remove('show'), 1400);
+}
+</script>
+</body>
+</html>
