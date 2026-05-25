@@ -120,7 +120,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
         <button class="opt" data-scope="missing" onclick="setScope('missing')">Missing/Low<span class="opt-sub">Only low-quality</span></button>
         <button class="opt" data-scope="unverified" onclick="setScope('unverified')">Unverified<span class="opt-sub">Skip VERIFIED</span></button>
       </div>
-      <div style="font-size:11px;color:rgba(245,240,232,0.5);margin-bottom:10px;line-height:1.4" id="scopeDesc">Will re-geocode all <span id="scopeCount">—</span> records, overwriting existing GPS. Records marked VERIFIED will be skipped.</div>
+      <div style="font-size:11px;color:rgba(245,240,232,0.5);margin-bottom:10px;line-height:1.4" id="scopeDesc">Choose a scope above. <span id="scopeCount" style="color:var(--lime);font-weight:700">0</span> records will be processed.</div>
     </div>
 
     <div class="card hidden" id="runCard">
@@ -231,19 +231,15 @@ window.setScope = function(s) {
   }
   
   queue = records;
-  document.getElementById('scopeCount').textContent = records.length;
   
-  if (s === 'all') document.getElementById('scopeDesc').innerHTML = 
-    `Re-geocode all <span style="color:var(--lime);font-weight:700">${records.length}</span> records. Records marked VERIFIED will be skipped automatically.`;
-  else if (s === 'missing') document.getElementById('scopeDesc').innerHTML = 
-    `Only re-geocode <span style="color:var(--amber);font-weight:700">${records.length}</span> records with low confidence or no GPS.`;
-  else document.getElementById('scopeDesc').innerHTML = 
-    `Re-geocode <span style="color:var(--lime);font-weight:700">${records.length}</span> records that haven't been manually verified.`;
+  // Update only the count span — never replace the whole scopeDesc innerHTML
+  const countEl = document.getElementById('scopeCount');
+  if (countEl) countEl.textContent = records.length;
 };
 
 window.startGeocode = async function() {
   if (queue.length === 0) { alert('Nothing in queue'); return; }
-  if (!confirm(`Re-geocode ${queue.length} records?\n\nThis will overwrite existing GPS coords for non-verified records. Verified records are always skipped.\n\nEstimated time: ${Math.ceil(queue.length * 0.6 / 60)} minutes.`)) return;
+  if (!confirm(`Re-geocode ${queue.length} records?\n\nThis will overwrite existing GPS coords for non-verified records. Verified records are always skipped.\n\nEstimated time: ${Math.ceil(queue.length * 0.15 / 60)} minutes.`)) return;
   
   running = true;
   stats = { hi: 0, mid: 0, lo: 0, fail: 0, total: queue.length, skipped: 0, processed: 0 };
