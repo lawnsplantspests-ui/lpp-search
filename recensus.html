@@ -202,7 +202,7 @@ window.loadStatus = async function() {
     document.getElementById('midCount').textContent = mid;
     document.getElementById('loCount').textContent = lo;
     
-    const mins = Math.ceil(allRecords.length * 0.6 / 60);
+    const mins = Math.ceil(allRecords.length * 0.15 / 60);
     document.getElementById('estTime').textContent = `~${mins} minutes for ${allRecords.length} records`;
     
     document.getElementById('actionCard').classList.remove('hidden');
@@ -286,92 +286,70 @@ window.clearCache = function() {
 
 async function processQueue() {
   const queueCopy = queue.slice();
-  for (let i = 0; i < queueCopy.length; i++) {
+  const BATCH_SIZE = 10;
+  
+  for (let i = 0; i < queueCopy.length; i += BATCH_SIZE) {
     if (!running) break;
-    const r = queueCopy[i];
-    stats.processed = i + 1;
     
-    // Skip already-verified
-    if (String(r.verified || '').toUpperCase().includes('VERIFIED')) {
-      stats.skipped++;
-      log(`⊘ ${r.name} — already VERIFIED, skipped`, 'skip');
+    const batch = queueCopy.slice(i, i + BATCH_SIZE);
+    
+    // Filter out already-verified (handled server-side too but we count locally)
+    const toSend = [];
+    for (const r of batch) {
+      if (String(r.verified || '').toUpperCase().includes('VERIFIED')) {
+        stats.skipped++;
+        stats.processed++;
+        log(`⊘ ${r.name} — VERIFIED, skipped`, 'skip');
+      } else {
+        toSend.push({ tab: r.tab, row: r.row, address: r.address, name: r.name });
+      }
+    }
+    
+    if (toSend.length === 0) {
       updateProgress();
       continue;
     }
     
     try {
-      const result = await censusGeocode(r.address);
-      if (result) {
-        await saveResult(r, result.lat, result.lng, result.confidence);
-        const cls = result.confidence === 'HIGH' ? 'hi' : result.confidence === 'MEDIUM' ? 'mid' : 'low';
-        if (cls === 'hi') stats.hi++; else if (cls === 'mid') stats.mid++; else stats.lo++;
-        log(`${cls === 'hi' ? '✓' : cls === 'mid' ? '~' : '?'} [${result.confidence}] ${r.name} → ${result.lat.toFixed(5)}, ${result.lng.toFixed(5)}`, cls);
-      } else {
-        stats.fail++;
-        log(`✗ FAIL ${r.name} — Census couldn't find address`, 'fail');
+      // Send batch to Apps Script - it does the Census geocoding server-side
+      const res = await fetch(SHEETS_API, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'censusGeocodeBatch',
+          items: toSend.map(t => ({ tab: t.tab, row: t.row, address: t.address }))
+        })
+      });
+      
+      const data = await res.json();
+      const results = data.results || [];
+      
+      for (let j = 0; j < toSend.length; j++) {
+        const sent = toSend[j];
+        const result = results.find(x => x.tab === sent.tab && x.row === sent.row);
+        stats.processed++;
+        
+        if (!result || result.status !== 'ok') {
+          stats.fail++;
+          log(`✗ FAIL ${sent.name} — ${result?.reason || 'unknown'}`, 'fail');
+        } else {
+          const cls = result.confidence === 'HIGH' ? 'hi' : result.confidence === 'MEDIUM' ? 'mid' : 'low';
+          if (cls === 'hi') stats.hi++; else if (cls === 'mid') stats.mid++; else stats.lo++;
+          log(`${cls === 'hi' ? '✓' : cls === 'mid' ? '~' : '?'} [${result.confidence}] ${sent.name} → ${result.lat.toFixed(5)}, ${result.lng.toFixed(5)}`, cls);
+        }
       }
     } catch(e) {
-      stats.fail++;
-      log(`✗ ERR ${r.name} — ${e.message}`, 'fail');
+      // Whole batch failed
+      for (const sent of toSend) {
+        stats.fail++;
+        stats.processed++;
+        log(`✗ ERR ${sent.name} — ${e.message}`, 'fail');
+      }
     }
     
     updateProgress();
-    if (running && i < queueCopy.length - 1) await sleep(400);
+    // Brief pause between batches to be polite to Census API
+    if (running && i + BATCH_SIZE < queueCopy.length) await sleep(800);
   }
-}
-
-async function censusGeocode(address) {
-  // Strip embedded coords first
-  const clean = String(address || '').replace(/,?\s*-?\d+\.\d+,\s*-?\d+\.\d+\s*$/, '').trim();
-  if (!clean) return null;
-  
-  // Census API: https://geocoding.geo.census.gov/geocoder/locations/onelineaddress
-  const url = 'https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=' 
-    + encodeURIComponent(clean) + '&benchmark=Public_AR_Current&format=json';
-  
-  try {
-    const res = await fetch(url);
-    const data = await res.json();
-    const matches = data?.result?.addressMatches || [];
-    if (matches.length === 0) return null;
-    
-    const m = matches[0];
-    const lat = parseFloat(m.coordinates.y);
-    const lng = parseFloat(m.coordinates.x);
-    
-    // Determine confidence based on match type
-    // Census returns "Exact" or "Non_Exact" in tigerLine.side typically
-    // Better signal: side and matchedAddress completeness
-    let confidence = 'LOW';
-    const matched = (m.matchedAddress || '').toUpperCase();
-    const matchType = (m.tigerLine?.side || '').toUpperCase();
-    const hasNumber = /^\d+\s/.test(matched);
-    
-    if (hasNumber && matchType === 'L' || matchType === 'R') {
-      // Has a house number and matched to a specific side of the street
-      confidence = 'HIGH';
-    } else if (hasNumber) {
-      confidence = 'MEDIUM';
-    } else {
-      confidence = 'LOW';
-    }
-    
-    return { lat, lng, confidence, matched: m.matchedAddress };
-  } catch(e) {
-    throw new Error('Census API error: ' + e.message);
-  }
-}
-
-async function saveResult(record, lat, lng, confidence) {
-  await fetch(SHEETS_API, {
-    method: 'POST', mode: 'no-cors',
-    body: JSON.stringify({
-      action: 'updateRecordLocation',
-      tab: record.tab, row: record.row,
-      lat: lat, lng: lng,
-      confidence: confidence
-    })
-  });
 }
 
 function updateProgress() {
