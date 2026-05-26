@@ -35,6 +35,9 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
 
 /* Layer toggles */
 .layer-toggles{position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:15;display:flex;gap:6px;padding:6px;background:rgba(13,31,19,0.92);border:1px solid var(--border);border-radius:30px;backdrop-filter:blur(20px);box-shadow:0 8px 24px rgba(0,0,0,0.4)}
+.county-filter{position:fixed;top:108px;left:50%;transform:translateX(-50%);z-index:15;background:rgba(13,31,19,0.92);border:1px solid var(--border);border-radius:20px;padding:5px 12px 5px 14px;backdrop-filter:blur(20px);box-shadow:0 6px 18px rgba(0,0,0,0.4)}
+.county-filter select{background:transparent;border:none;color:var(--cream);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;outline:none;-webkit-appearance:none;appearance:none;padding-right:14px;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'><path fill='%237ec850' d='M0 0l4 5 4-5z'/></svg>");background-repeat:no-repeat;background-position:right center;cursor:pointer}
+.county-filter select option{background:#0d1f13;color:var(--cream)}
 .layer-btn{padding:8px 12px;font-size:11px;font-weight:700;border:none;background:transparent;color:rgba(245,240,232,0.5);border-radius:22px;cursor:pointer;font-family:'DM Sans',sans-serif;-webkit-appearance:none;letter-spacing:0.5px;display:flex;align-items:center;gap:4px;transition:all 0.2s}
 .layer-btn.active{color:var(--cream);box-shadow:0 2px 8px rgba(0,0,0,0.3)}
 .layer-btn.active.apiary{background:linear-gradient(135deg,#e8a020,#b06f0f)}
@@ -51,7 +54,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
 .action-btn.primary .lbl{opacity:1;font-weight:700}
 
 /* Stats overlay */
-.stats-overlay{position:fixed;top:110px;left:14px;z-index:14;background:rgba(13,31,19,0.85);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:11px;font-family:'DM Mono',monospace;color:rgba(245,240,232,0.6);backdrop-filter:blur(10px)}
+.stats-overlay{position:fixed;top:152px;left:14px;z-index:14;background:rgba(13,31,19,0.85);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:11px;font-family:'DM Mono',monospace;color:rgba(245,240,232,0.6);backdrop-filter:blur(10px)}
 .stats-overlay .accuracy{color:var(--lime)}
 .stats-overlay .stale{color:var(--amber)}
 .stats-overlay .error{color:#e74c3c}
@@ -124,6 +127,18 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
   <button class="layer-btn active apiary" id="layerApiary" onclick="toggleLayer('apiary')">🐝 <span id="cApiary">0</span></button>
   <button class="layer-btn active hyper" id="layerHyper" onclick="toggleLayer('hyper')">⚠️ <span id="cHyper">0</span></button>
   <button class="layer-btn active swarm" id="layerSwarm" onclick="toggleLayer('swarm')">🍯 <span id="cSwarm">0</span></button>
+</div>
+
+<!-- County filter -->
+<div class="county-filter">
+  <select id="countyFilter" onchange="onCountyChange()">
+    <option value="">All Counties</option>
+    <option value="Dauphin">Dauphin</option>
+    <option value="Cumberland">Cumberland</option>
+    <option value="Perry">Perry</option>
+    <option value="Lebanon">Lebanon</option>
+    <option value="York">York</option>
+  </select>
 </div>
 
 <!-- Stats overlay -->
@@ -260,6 +275,12 @@ function initMap() {
   map = L.map('map', { zoomControl: true, attributionControl: false }).setView([40.27, -76.88], 12);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
   L.control.attribution({ position: 'bottomright', prefix: false }).addAttribution('© OpenStreetMap').addTo(map);
+  
+  // Restore saved county filter
+  const savedCounty = localStorage.getItem('lpp_county_filter') || '';
+  const cf = document.getElementById('countyFilter');
+  if (cf) cf.value = savedCounty;
+  
   renderAllLayers();
   
   // Stop following when user pans manually
@@ -271,10 +292,13 @@ function renderAllLayers() {
   Object.values(layers).forEach(l => { if (l) map.removeLayer(l); });
   layers = { apiary: L.layerGroup(), hyper: L.layerGroup(), swarm: L.layerGroup() };
 
+  const countyFilter = document.getElementById('countyFilter')?.value || '';
+
   let countA = 0, countH = 0, countS = 0;
 
   for (const r of registry) {
     if (!r.lat || !r.lng) continue;
+    if (countyFilter && r.county !== countyFilter) continue;
     const layer = r.type === 'Apiary' ? 'apiary' : 'hyper';
     if (layer === 'apiary') countA++; else countH++;
     const marker = makeMarker(r.lat, r.lng, layer, r);
@@ -283,6 +307,7 @@ function renderAllLayers() {
 
   for (const s of swarms) {
     if (!s.lat || !s.lng) continue;
+    if (countyFilter && s.county && s.county !== countyFilter) continue;
     countS++;
     const marker = makeMarker(s.lat, s.lng, 'swarm', s);
     layers.swarm.addLayer(marker);
@@ -421,6 +446,12 @@ window.toggleLayer = function(key) {
   btn.classList.toggle('active', visible[key]);
   if (visible[key]) layers[key].addTo(map);
   else map.removeLayer(layers[key]);
+};
+
+window.onCountyChange = function() {
+  const val = document.getElementById('countyFilter').value;
+  localStorage.setItem('lpp_county_filter', val);
+  renderAllLayers();
 };
 
 // ── Swarm dialog ───────────────────────────────────────
