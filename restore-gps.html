@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0d1f13">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Restore Original GPS — LPP Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=DM+Mono&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--green:#1a4d2e;--green-mid:#2d7a47;--lime:#7ec850;--cream:#f5f0e8;--amber:#e8a020;--red:#c0392b;--dark:#0d1f13;--blue:#3a8dde;--border:rgba(126,200,80,0.25)}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);color:var(--cream)}
+.bg{position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse 80% 60% at 20% 10%,rgba(45,122,71,0.35) 0%,transparent 60%),radial-gradient(ellipse 60% 80% at 85% 90%,rgba(26,77,46,0.4) 0%,transparent 55%),radial-gradient(ellipse 100% 100% at 50% 50%,#0d1f13 0%,#060e09 100%)}
+.container{position:relative;z-index:10;max-width:480px;margin:0 auto;padding:18px 14px 40px;min-height:100vh}
+.back{display:inline-flex;align-items:center;gap:5px;color:var(--lime);text-decoration:none;font-size:13px;margin-bottom:14px;opacity:0.7;padding:8px 12px;background:rgba(126,200,80,0.05);border:1px solid rgba(126,200,80,0.15);border-radius:10px}
+.title{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:1px;line-height:1}
+.subtitle{font-size:13px;color:rgba(245,240,232,0.5);margin-bottom:18px}
+.info-box{background:rgba(58,141,222,0.08);border:1px solid rgba(58,141,222,0.25);border-radius:12px;padding:13px 16px;font-size:12.5px;line-height:1.5;color:rgba(245,240,232,0.78);margin-bottom:14px}
+.warning-box{background:rgba(232,160,32,0.08);border:1px solid rgba(232,160,32,0.3);border-radius:12px;padding:13px 16px;font-size:12.5px;line-height:1.5;color:var(--amber);margin-bottom:14px}
+.card{background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px}
+.section-title{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--lime);font-weight:700;margin-bottom:12px}
+.btn{width:100%;padding:13px;background:linear-gradient(135deg,var(--lime),var(--green-mid));color:var(--dark);font-size:14px;font-weight:700;letter-spacing:0.5px;border:none;border-radius:11px;cursor:pointer;font-family:'DM Sans',sans-serif;-webkit-appearance:none;box-shadow:0 4px 14px rgba(126,200,80,0.3)}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+.btn-secondary{background:rgba(58,141,222,0.15);color:#5ba8e8;border:1px solid rgba(58,141,222,0.4);box-shadow:none}
+.btn-spinner{display:inline-block;width:13px;height:13px;border:2px solid rgba(13,31,19,0.3);border-top-color:var(--dark);border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:7px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.progress-bar{height:10px;background:rgba(0,0,0,0.4);border-radius:5px;overflow:hidden;margin:14px 0 6px}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--lime),var(--green-mid));width:0%;transition:width 0.3s}
+.progress-text{font-family:'DM Mono',monospace;font-size:11px;color:var(--lime);text-align:center;margin-bottom:6px}
+.log{background:rgba(0,0,0,0.5);border:1px solid rgba(126,200,80,0.1);border-radius:9px;padding:10px;font-family:'DM Mono',monospace;font-size:10px;line-height:1.5;max-height:340px;overflow-y:auto;margin-top:12px}
+.log-entry{padding:1px 0;color:rgba(245,240,232,0.65)}
+.log-entry.ok{color:var(--lime)}
+.log-entry.skip{color:rgba(245,240,232,0.4)}
+.log-entry.fail{color:#e74c3c}
+.no-access{text-align:center;padding:60px 20px}
+.no-access h2{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--red);margin-bottom:10px}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="container">
+  <a href="admin.html" class="back">← Admin Panel</a>
+
+  <div id="noAccess" class="no-access hidden">
+    <h2>⛔ Admin Only</h2>
+    <p>This tool is restricted to administrators.</p>
+  </div>
+
+  <div id="mainContent" class="hidden">
+    <div class="title">Restore Original GPS</div>
+    <div class="subtitle">Restore PA Plants "GPS Point" coordinates that were overwritten by re-geocoding</div>
+
+    <div class="info-box">
+      🎯 <strong>What this does:</strong> The PA Plants registry has records marked as "GPS Point" where the registrant provided exact coordinates directly. These are the most accurate locations we have. This tool restores those original coords and marks them VERIFIED so they won't be touched again.
+    </div>
+
+    <div class="warning-box">
+      ⚡ <strong>Only run this once.</strong> It will match by name+address and restore <span id="recordCount">78</span> GPS Point records to their original PA Plants coordinates.
+    </div>
+
+    <div class="card">
+      <div class="section-title">📊 Status</div>
+      <div id="statusText" style="font-size:13px;color:rgba(245,240,232,0.7);margin-bottom:10px">Click Start to begin restoration.</div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-text" id="progressText">Ready</div>
+      
+      <button class="btn" id="startBtn" onclick="startRestore()" style="margin-top:14px">▶️ Start Restore</button>
+      <button class="btn btn-secondary" style="margin-top:8px" onclick="clearCache()">🗑 Clear App Cache</button>
+
+      <div class="log hidden" id="log"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCtBCUuQAHuQ1O8V2sXoFYBcfaL_samV4o",
+  authDomain: "lpp-search.firebaseapp.com",
+  projectId: "lpp-search",
+  storageBucket: "lpp-search.firebasestorage.app",
+  messagingSenderId: "566058509628",
+  appId: "1:566058509628:web:beaf2b918377be9c152a39"
+};
+const SHEETS_API = "https://script.google.com/macros/s/AKfycbw5uhfIZeX-i0zGVNU6XllGZQ4TNTwA4THXRQWIS8pq3yKtMBqntV3slaEqGPAk-R5hDQ/exec";
+
+// ORIGINAL GPS POINTS from PA Plants registry - extracted from source documents
+const ORIGINAL_GPS = [{"name":"Dickinson College","address_prefix":"100-198 North College Street, Carlisle, PA 17013","lat":40.20477259900015,"lng":-77.19637870788574},{"name":"Fickes, Scott E","address_prefix":"525 S Bedford St, Carlisle, PA 17013-3902","lat":40.194547,"lng":-77.18729300000001},{"name":"Beidel, Jay","address_prefix":"1720 Walnut Bottom Road, Carlisle, PA 17015","lat":40.166346,"lng":-77.23519899999997},{"name":"Brubaker, James","address_prefix":"1011-1041 Myerstown Road, Gardners, PA 17324","lat":40.04848,"lng":-77.18962999999997},{"name":"Daniels, Jonathan","address_prefix":"210 Frost Road, Gardners, PA 17324","lat":40.0556,"lng":-77.1823},{"name":"Zelger, Rudolph","address_prefix":"18 N Dickinson School Rd, Carlisle, PA 17015","lat":40.26538,"lng":-77.26532},{"name":"Lehman, Thomas E","address_prefix":"2215 Lambs Gap Rd, Enola, PA 17025","lat":40.29278,"lng":-77.00554999999997},{"name":"Houck, David","address_prefix":"147 Ewe Road, Mechanicsburg, PA 17055","lat":40.203552,"lng":-76.93384300000002},{"name":"Jones, Thomas","address_prefix":"230 Horsehoe Road, Carlisle, PA 17015","lat":40.2568,"lng":-77.28546},{"name":"Brubaker, James","address_prefix":"433-449 Sherwood Drive, Carlisle, PA 17015","lat":40.27179,"lng":-77.12335000000002},{"name":"Brubaker, James","address_prefix":"7722 Wertzville Road, Carlisle, PA 17013","lat":40.28285,"lng":-77.13932999999997},{"name":"Shirey, Wilbur","address_prefix":"241 N Middlesex Rd, Carlisle, PA 17013","lat":40.25741,"lng":-77.12768},{"name":"Walker, John R","address_prefix":"Country Club Road, Carlisle, PA 17015","lat":40.22170340837315,"lng":-77.33413738281251},{"name":"Hildebrand, Greg","address_prefix":"126 South Locust Point Rd, Mechanicsburg, PA 17055","lat":40.18658447265625,"lng":-77.05750582746887},{"name":"Roccasecca, James","address_prefix":"Creek Road, Mechanicsburg, PA 17055","lat":40.144792,"lng":-77.071027},{"name":"Hopler, Joan","address_prefix":"920 Cranes Gap Rd, Carlisle, PA 17013","lat":40.265229,"lng":-77.19264099999998},{"name":"Jones, Thomas","address_prefix":"2100 Enola Rd, Carlisle, PA 17015","lat":40.26956,"lng":-77.24254000000002},{"name":"Frantz, Clare","address_prefix":"Silver Spring Township","lat":40.22438920325037,"lng":-77.07423623829453},{"name":"Daniels, Jonathan","address_prefix":"Sigmans Trailer Court, 57 Lindsay Lane, Carlisle, PA 17013","lat":40.1757,"lng":-77.19010000000003},{"name":"Daniels, Jonathan","address_prefix":"816 Holly Pike, Mount Hollly Springs, PA 17065","lat":40.131522,"lng":-77.19249100000002},{"name":"Hildebrand, Greg","address_prefix":"Grantham Rd, Mechanicsburg, PA 17055","lat":40.1585064,"lng":-76.9909503},{"name":"Paulus, Creedin","address_prefix":"1216 S York St, Mechanicsburg, PA 17050","lat":40.19588,"lng":-77.00209999999998},{"name":"Brubaker, James","address_prefix":"24 Oak Bend Road, Newburg, PA 17240","lat":40.1975,"lng":-77.51679999999999},{"name":"Brubaker, James","address_prefix":"Pennsylvania Turnpike, West Pennsboro, PA 17015","lat":40.20311,"lng":-77.32844999999998},{"name":"Wolf, Russell","address_prefix":"424 Kerrsville Rd, Carlisle, PA 17015","lat":40.1658,"lng":-77.31720999999999},{"name":"Wieland, Ray, IV","address_prefix":"1169 Paige Hill Road, New Bloomfield, PA 17068","lat":40.37324,"lng":-77.2021},{"name":"Ney, Richard R, Jr","address_prefix":"227 Huckleberry Road, New Bloomfield, PA 17068","lat":40.40211,"lng":-77.17811},{"name":"c/o Joseph Pegnetter, Perry County Bee Company LLC","address_prefix":"30247 Couchtown Road, Blain, PA 17006","lat":40.319532,"lng":-77.474569},{"name":"Albright, Perry","address_prefix":"Juniata Township, PA","lat":40.4438,"lng":-77.2566},{"name":"Anderson, Kevin","address_prefix":"6421 Middle Ridge Road, Newport, PA 17074","lat":40.44779,"lng":-77.24274000000003},{"name":"Sansone, Shane","address_prefix":"5660 Middle Ridge Rd, Newport, PA 17074","lat":40.452611,"lng":-77.22790099999997},{"name":"Kistler, John","address_prefix":"22 Front Street, New Buffalo, PA 17069","lat":40.453859099999995,"lng":-76.96855920000002},{"name":"Toothaker, William M","address_prefix":"100 Old Mill Road, Shermansdale, PA 17319","lat":40.1495266102659,"lng":-76.7479831366117},{"name":"Hiddemen, G Mitch","address_prefix":"Penn Township, PA","lat":40.35145,"lng":-77.04839},{"name":"Lindgren, Cllifford","address_prefix":"315 Faculty Rd, Duncannon, PA 17020","lat":40.392666,"lng":-77.06961799999999},{"name":"Jent, Bill And Cheryl","address_prefix":"238 Pine Hill Road, Landisburg, PA 17040","lat":40.31496,"lng":-77.27408000000003},{"name":"Wieland, Ray, IV","address_prefix":"605 - 699 Indiana Rd, Landisburg, PA 17040","lat":40.36867,"lng":-77.25148},{"name":"Martin, Franklin","address_prefix":"1835 New Bloomfield Road, New Bloomfield, PA 17068","lat":40.39076,"lng":-77.13794000000001},{"name":"Nacko, Diane","address_prefix":"2 Grandview Drive, Duncannon, PA 17020","lat":40.376447,"lng":-77.11270999999999},{"name":"Heller, Wayne","address_prefix":"263 Morrissey Dr, Lebanon, PA 17046","lat":40.39325,"lng":-76.39418},{"name":"Keller, Timothy L","address_prefix":"Freeport Road, Lebanon, PA 17046","lat":40.39952790601537,"lng":-76.38872684571831},{"name":"Keller, Timothy L","address_prefix":"Bethel Township, Lebanon, PA 17046","lat":40.39582342688242,"lng":-76.42353581684583},{"name":"Runkel, Brian","address_prefix":"1004 Frystown Rd, Fredericksburg, PA 17026","lat":40.447691,"lng":-76.37546800000001},{"name":"Troutman, Renee","address_prefix":"Bethel Township, PA","lat":40.42934,"lng":-76.40594},{"name":"Anderson, Kevin W","address_prefix":"East Hanover Township, PA","lat":40.359645164214356,"lng":-76.64989406925118},{"name":"Schwartz, Dan R","address_prefix":"838 Ono Road, Jonestown, PA 17038","lat":40.39194335371425,"lng":-76.51906058192253},{"name":"Shuey, Joel","address_prefix":"Grantville, PA 17028","lat":40.39852288888533,"lng":-76.59961081775295},{"name":"Shuey, Joel","address_prefix":"51 Main Street, Ono, PA 17077","lat":40.40192078825009,"lng":-76.53470542957342},{"name":"Keller, Timothy L","address_prefix":"Gibble Road, Myerstown, PA 17067","lat":40.31047188480158,"lng":-76.3177632065701},{"name":"Keller, Timothy L","address_prefix":"Stiegel Pike, Newmanstown, PA 17073","lat":40.29493065941999,"lng":-76.30501169662301},{"name":"Keller, Timothy L","address_prefix":"South 501/Stiegel Pike, Myerstown, PA 17067","lat":40.334385383587744,"lng":-76.30409605888899},{"name":"Smoker, David","address_prefix":"149 North Ramona Road, Myerstown, PA 17067","lat":40.37967,"lng":-76.33947999999998},{"name":"Samuelson, Lee W","address_prefix":"171 N Fisher St, Jonestown, PA 17042","lat":40.416575993340025,"lng":-76.4862207297171},{"name":"Haslam, David","address_prefix":"Millcreek Township, PA","lat":40.33113156548741,"lng":-76.22839569504471},{"name":"Moyer, Henry","address_prefix":"1779 Blacks Bridge Rd, Annville, PA 17003","lat":40.374933,"lng":-76.56078100000002},{"name":"Rider, Charles K","address_prefix":"Box 660 Syner Road, Annville, PA 17003","lat":40.34565,"lng":-76.58553},{"name":"Keller, Timothy L","address_prefix":"West Kercher Ave, Lebanon, PA 17046","lat":40.37866977123188,"lng":-76.41826813054031},{"name":"Buckfelder, Deborah","address_prefix":"731 Gravel Hill Road, Palmyra, PA 17078","lat":40.36072,"lng":-76.62631299999998},{"name":"Moyer, Henry","address_prefix":"1 Dogwood Drive, Annville, PA 17003","lat":40.332994710388384,"lng":-76.59033143533861},{"name":"Keller, Timothy L","address_prefix":"Pine Meadow Road, Lebanon, PA 17046","lat":40.40731867545467,"lng":-76.42960503520786},{"name":"Troutman, Renee","address_prefix":"Swatara Township, PA","lat":40.42024,"lng":-76.45741},{"name":"O'Planick, David","address_prefix":"5183 Sinsheim Road, Spring Grove, PA 17362","lat":39.81084,"lng":-76.85730000000001},{"name":"Albright, Sam","address_prefix":"130 Stoney Run Road, Dillsburg, PA 17019","lat":40.091725,"lng":-77.01659999999998},{"name":"Fahs, Mike","address_prefix":"365 Forge Hill Rd, Manchester, PA 17345","lat":40.049423899999994,"lng":-76.7108938},{"name":"Shannon, Rick","address_prefix":"357 Big Spring Road, Etters, PA 17319","lat":40.182793673828115,"lng":-76.81594104782567},{"name":"Albright, Sam","address_prefix":"1030 South Mountain Road, Dillsburg, PA 17019","lat":40.08301,"lng":-77.07249999999999},{"name":"Brubaker, James","address_prefix":"130 Lost Hollow Road, Dillsburg, PA 17019","lat":40.0361,"lng":-77.05743000000001},{"name":"Young, Nathan A","address_prefix":"176 Clear Spring Road, Dillsburg, PA 17019","lat":40.06622,"lng":-77.08951000000002},{"name":"Sedlacko, Thomas","address_prefix":"Jackson Township, PA","lat":39.94892222188592,"lng":-76.83434784677841},{"name":"Bitterman, Robert","address_prefix":"35 Silverdale Ave, Wrightsville, PA 17368","lat":39.93919579361771,"lng":-76.48994985197182},{"name":"Stadler, Nancy G","address_prefix":"220 Singer Rd, New Freedom, PA 17349","lat":39.72933,"lng":-76.70278},{"name":"Toothaker, William M","address_prefix":"Roxberry Road, York Haven, PA 17370","lat":40.121403488001995,"lng":-76.80455376449731},{"name":"Wolf, Stephanie A","address_prefix":"900 Red Mill Rd, Etters, PA 17319","lat":40.15487306812586,"lng":-76.79427031000797},{"name":"Jacoby, Wayne","address_prefix":"2440 Meeting House Rd, Spring Grove, PA 17362","lat":39.86343,"lng":-76.81720000000001},{"name":"Edick, Todd A","address_prefix":"9022 blue Ball Rd, Stewartstown, PA 17363","lat":39.782579,"lng":-76.5423229},{"name":"Papke, David","address_prefix":"1700 Powder Mill Road, York, PA 17403","lat":39.92685,"lng":-76.70623999999998},{"name":"Bees LLC, Dawg Gone","address_prefix":"832 West Middle Street, Hanover, PA 17331","lat":39.79034103337424,"lng":-76.99299283325672},{"name":"Dennis, Tim","address_prefix":"1060 Fairview Drive, Hanover, PA 17331","lat":39.76593,"lng":-77.00469}];
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+let currentUser = null;
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) { window.location.href = 'index.html'; return; }
+  currentUser = user;
+  const localUser = JSON.parse(localStorage.getItem('lpp_user') || '{}');
+  if (localUser.role !== 'admin') {
+    document.getElementById('noAccess').classList.remove('hidden');
+    return;
+  }
+  document.getElementById('mainContent').classList.remove('hidden');
+  document.getElementById('recordCount').textContent = ORIGINAL_GPS.length;
+});
+
+window.startRestore = async function() {
+  if (!confirm(`Restore ${ORIGINAL_GPS.length} original GPS Point coordinates from PA Plants registry?\n\nThis will mark them VERIFIED so they're never re-geocoded.`)) return;
+  
+  const btn = document.getElementById('startBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="btn-spinner"></span>Loading registry…';
+  
+  const log = document.getElementById('log');
+  log.classList.remove('hidden');
+  log.innerHTML = '';
+  
+  // Load full registry
+  const res = await fetch(SHEETS_API + '?action=getRegistry');
+  const data = await res.json();
+  const records = data.records || [];
+  logEntry(`Loaded ${records.length} records from sheet`, 'ok');
+  
+  // Build address-prefix lookup: take first 8 chars of address
+  const lookup = new Map();
+  for (const r of records) {
+    const cleanAddr = String(r.address || '').replace(/,?\s*-?\d+\.\d+,\s*-?\d+\.\d+\s*$/, '').trim();
+    const key = (r.name + '|' + cleanAddr.substring(0, 20)).toLowerCase();
+    lookup.set(key, r);
+  }
+  
+  let matched = 0, skipped = 0, failed = 0;
+  
+  for (let i = 0; i < ORIGINAL_GPS.length; i++) {
+    const gps = ORIGINAL_GPS[i];
+    btn.innerHTML = `<span class="btn-spinner"></span>${i+1}/${ORIGINAL_GPS.length}`;
+    document.getElementById('progressFill').style.width = Math.round(((i+1)/ORIGINAL_GPS.length)*100) + '%';
+    document.getElementById('progressText').textContent = `${i+1} / ${ORIGINAL_GPS.length}`;
+    
+    // Try to match by name + address prefix
+    const key = (gps.name + '|' + gps.address_prefix.substring(0, 20)).toLowerCase();
+    let record = lookup.get(key);
+    
+    // Fallback: search by name only if there's exactly one match
+    if (!record) {
+      const candidates = records.filter(r => r.name.toLowerCase() === gps.name.toLowerCase());
+      if (candidates.length === 1) record = candidates[0];
+    }
+    
+    if (!record) {
+      logEntry(`✗ NO MATCH ${gps.name}`, 'fail');
+      failed++;
+      continue;
+    }
+    
+    try {
+      await fetch(SHEETS_API, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'updateRecordLocation',
+          tab: record.tab, row: record.row,
+          lat: gps.lat, lng: gps.lng,
+          confidence: 'HIGH', verified: true
+        })
+      });
+      logEntry(`✓ ${gps.name} → ${gps.lat.toFixed(5)}, ${gps.lng.toFixed(5)}`, 'ok');
+      matched++;
+    } catch(e) {
+      logEntry(`✗ ${gps.name} - ${e.message}`, 'fail');
+      failed++;
+    }
+    
+    await sleep(150);
+  }
+  
+  document.getElementById('statusText').innerHTML = 
+    `✓ Done! <strong>${matched}</strong> restored · <strong>${failed}</strong> failed`;
+  logEntry(`\n=== Done: ${matched} restored, ${failed} failed ===`, 'ok');
+  
+  btn.disabled = false;
+  btn.innerHTML = '✓ Complete (run again if needed)';
+  
+  // Clear cache so map/search pick up new coords
+  ['lpp_registry','lpp_registry_v2'].forEach(k => {
+    localStorage.removeItem(k);
+    localStorage.removeItem(k+'_time');
+  });
+};
+
+window.clearCache = function() {
+  ['lpp_registry','lpp_registry_v2'].forEach(k => {
+    localStorage.removeItem(k);
+    localStorage.removeItem(k+'_time');
+  });
+  alert('✓ Cache cleared');
+};
+
+function logEntry(msg, type) {
+  const log = document.getElementById('log');
+  const e = document.createElement('div');
+  e.className = 'log-entry ' + (type || '');
+  e.textContent = msg;
+  log.appendChild(e);
+  log.scrollTop = log.scrollHeight;
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+</script>
+</body>
+</html>
