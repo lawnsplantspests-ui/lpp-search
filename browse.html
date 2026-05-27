@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0d1f13">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Browse Records — LPP Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=DM+Mono&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--green:#1a4d2e;--green-mid:#2d7a47;--lime:#7ec850;--cream:#f5f0e8;--amber:#e8a020;--red:#c0392b;--dark:#0d1f13;--blue:#3a8dde;--border:rgba(126,200,80,0.25)}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);color:var(--cream)}
+.bg{position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse 80% 60% at 20% 10%,rgba(45,122,71,0.35) 0%,transparent 60%),radial-gradient(ellipse 60% 80% at 85% 90%,rgba(26,77,46,0.4) 0%,transparent 55%),radial-gradient(ellipse 100% 100% at 50% 50%,#0d1f13 0%,#060e09 100%)}
+.app{position:relative;z-index:10;height:100vh;display:flex;flex-direction:column}
+
+.topbar{padding:10px 12px;background:rgba(13,31,19,0.95);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.back{display:inline-flex;align-items:center;gap:4px;color:var(--lime);text-decoration:none;font-size:13px;padding:7px 11px;background:rgba(126,200,80,0.05);border:1px solid rgba(126,200,80,0.15);border-radius:9px}
+.title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;color:var(--cream);flex:1}
+.count{font-family:'DM Mono',monospace;font-size:11px;color:rgba(245,240,232,0.55)}
+
+.filters{padding:8px 12px;background:rgba(13,31,19,0.95);border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:8px;flex-shrink:0}
+.search-input{width:100%;padding:11px 14px;background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:11px;color:var(--cream);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;-webkit-appearance:none}
+.search-input::placeholder{color:rgba(245,240,232,0.35)}
+.search-input:focus{border-color:var(--lime)}
+.filter-row{display:flex;gap:6px}
+.filter-row select{flex:1;padding:8px 10px;background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:9px;color:var(--cream);font-family:'DM Sans',sans-serif;font-size:12px;outline:none;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'><path fill='%237ec850' d='M0 0l4 5 4-5z'/></svg>");background-repeat:no-repeat;background-position:right 10px center;padding-right:24px}
+.filter-row select option{background:#0d1f13}
+
+.results{flex:1;overflow-y:auto;padding:8px 12px 60px;-webkit-overflow-scrolling:touch}
+.result-card{background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:11px;padding:11px 13px;margin-bottom:7px;cursor:pointer;transition:background 0.15s}
+.result-card:active{background:rgba(126,200,80,0.08)}
+.rc-row1{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:3px}
+.rc-name{font-size:14px;font-weight:700;line-height:1.25;flex:1}
+.rc-type{font-size:8px;font-weight:700;letter-spacing:0.8px;padding:3px 6px;border-radius:4px;flex-shrink:0}
+.rc-type.apiary{background:rgba(232,160,32,0.2);color:var(--amber)}
+.rc-type.hyper{background:rgba(192,57,43,0.2);color:#e74c3c}
+.rc-addr{font-size:11.5px;color:rgba(245,240,232,0.62);line-height:1.35}
+.rc-meta{font-size:10px;color:rgba(245,240,232,0.4);font-family:'DM Mono',monospace;margin-top:3px;display:flex;gap:8px;flex-wrap:wrap}
+.rc-meta .verified{color:var(--lime)}
+.rc-meta .no-gps{color:#e74c3c}
+
+.empty{padding:40px 20px;text-align:center;color:rgba(245,240,232,0.4);font-size:13px}
+.loading{padding:40px 20px;text-align:center}
+.spinner{width:32px;height:32px;border:3px solid rgba(126,200,80,0.2);border-top-color:var(--lime);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.dialog-bg{position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);z-index:100;display:none;align-items:flex-end;justify-content:center;padding:14px;animation:fadeIn 0.18s}
+.dialog-bg.show{display:flex}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.dialog{background:rgba(13,31,19,0.98);border:1px solid var(--border);border-radius:16px 16px 8px 8px;width:100%;max-width:460px;max-height:80vh;overflow-y:auto;padding:18px;animation:slideUp 0.22s}
+@keyframes slideUp{from{transform:translateY(20px)}to{transform:translateY(0)}}
+.d-name{font-size:18px;font-weight:700;line-height:1.2;margin-bottom:6px}
+.d-meta-row{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.d-meta-row .rc-type{font-size:9px;padding:4px 8px}
+.d-row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(126,200,80,0.08);font-size:13px;gap:10px;align-items:flex-start}
+.d-row:last-of-type{border-bottom:none}
+.d-lbl{color:rgba(245,240,232,0.5);font-size:11px;letter-spacing:0.5px;text-transform:uppercase;font-weight:600;flex-shrink:0;padding-top:1px}
+.d-val{color:var(--cream);text-align:right;word-break:break-word;font-size:13px}
+.d-val a{color:var(--lime);text-decoration:none}
+.d-actions{display:flex;gap:6px;margin-top:14px}
+.d-actions .btn{flex:1;padding:11px;font-size:12px;font-weight:700;border:none;border-radius:9px;cursor:pointer;font-family:'DM Sans',sans-serif;-webkit-appearance:none}
+.btn-close{background:rgba(245,240,232,0.08);color:rgba(245,240,232,0.7);border:1px solid rgba(245,240,232,0.15)}
+.btn-edit{background:rgba(232,160,32,0.15);color:var(--amber);border:1px solid rgba(232,160,32,0.4);text-decoration:none;text-align:center;display:flex;align-items:center;justify-content:center}
+
+.no-access{text-align:center;padding:60px 20px}
+.no-access h2{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--red);margin-bottom:10px}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="app">
+
+  <div class="topbar">
+    <a href="admin.html" class="back">←</a>
+    <div class="title">BROWSE RECORDS</div>
+    <div class="count" id="countText">—</div>
+  </div>
+
+  <div id="noAccess" class="no-access hidden">
+    <h2>⛔ Admin Only</h2>
+    <p>This tool is restricted to administrators.</p>
+  </div>
+
+  <div id="mainContent" style="display:flex;flex-direction:column;flex:1;min-height:0">
+    <div class="filters">
+      <input class="search-input" id="searchBox" type="text" placeholder="🔍 Search by name, address, phone, or email..." autocomplete="off">
+      <div class="filter-row">
+        <select id="filterType">
+          <option value="">All Types</option>
+          <option value="Apiary">🐝 Apiary</option>
+          <option value="Hyper">⚠️ Hyper</option>
+        </select>
+        <select id="filterCounty">
+          <option value="">All Counties</option>
+          <option value="Dauphin">Dauphin</option>
+          <option value="Cumberland">Cumberland</option>
+          <option value="Perry">Perry</option>
+          <option value="Lebanon">Lebanon</option>
+          <option value="York">York</option>
+        </select>
+        <select id="filterStatus">
+          <option value="">All Status</option>
+          <option value="verified">✓ Verified</option>
+          <option value="unverified">Unverified</option>
+          <option value="nogps">No GPS</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="results" id="results">
+      <div class="loading">
+        <div class="spinner"></div>
+        <div style="color:rgba(245,240,232,0.5);font-size:13px">Loading registry...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="dialog-bg" id="dialog">
+  <div class="dialog" id="dialogContent">
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCtBCUuQAHuQ1O8V2sXoFYBcfaL_samV4o",
+  authDomain: "lpp-search.firebaseapp.com",
+  projectId: "lpp-search",
+  storageBucket: "lpp-search.firebasestorage.app",
+  messagingSenderId: "566058509628",
+  appId: "1:566058509628:web:beaf2b918377be9c152a39"
+};
+const SHEETS_API = "https://script.google.com/macros/s/AKfycbw5uhfIZeX-i0zGVNU6XllGZQ4TNTwA4THXRQWIS8pq3yKtMBqntV3slaEqGPAk-R5hDQ/exec";
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+let allRecords = [];
+let filtered = [];
+let currentRecord = null;
+const MAX_RENDER = 200; // Render at most 200 cards at a time for performance
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) { window.location.href = 'index.html'; return; }
+  const localUser = JSON.parse(localStorage.getItem('lpp_user') || '{}');
+  if (localUser.role !== 'admin') {
+    document.getElementById('mainContent').style.display = 'none';
+    document.getElementById('noAccess').classList.remove('hidden');
+    return;
+  }
+  await loadRegistry();
+});
+
+async function loadRegistry() {
+  try {
+    const cached = localStorage.getItem('lpp_registry_v2');
+    if (cached) {
+      allRecords = JSON.parse(cached);
+      applyFilters();
+    }
+    const res = await fetch(SHEETS_API + '?action=getRegistry');
+    const data = await res.json();
+    allRecords = data.records || [];
+    localStorage.setItem('lpp_registry_v2', JSON.stringify(allRecords));
+    localStorage.setItem('lpp_registry_v2_time', Date.now().toString());
+    applyFilters();
+  } catch(e) {
+    document.getElementById('results').innerHTML = 
+      `<div class="empty">⚠️ Failed to load: ${e.message}</div>`;
+  }
+}
+
+function applyFilters() {
+  const q = document.getElementById('searchBox').value.trim().toLowerCase();
+  const type = document.getElementById('filterType').value;
+  const county = document.getElementById('filterCounty').value;
+  const status = document.getElementById('filterStatus').value;
+  
+  filtered = allRecords.filter(r => {
+    if (type && r.type !== type) return false;
+    if (county && r.county !== county) return false;
+    if (status === 'verified' && !String(r.verified||'').toUpperCase().includes('VERIFIED')) return false;
+    if (status === 'unverified' && String(r.verified||'').toUpperCase().includes('VERIFIED')) return false;
+    if (status === 'nogps' && (r.lat && r.lng)) return false;
+    
+    if (q) {
+      const hay = (r.name + ' ' + r.address + ' ' + r.phoneDay + ' ' + r.phoneNight + ' ' + r.phoneAlt + ' ' + r.email + ' ' + r.township).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  
+  // Sort: verified first, then by name
+  filtered.sort((a,b) => (a.name||'').localeCompare(b.name||''));
+  
+  render();
+}
+
+function render() {
+  const countEl = document.getElementById('countText');
+  countEl.textContent = `${filtered.length} / ${allRecords.length}`;
+  
+  const results = document.getElementById('results');
+  if (filtered.length === 0) {
+    results.innerHTML = '<div class="empty">No records match your filters.</div>';
+    return;
+  }
+  
+  const toShow = filtered.slice(0, MAX_RENDER);
+  const html = toShow.map((r, i) => {
+    const cleanAddr = (r.address||'').replace(/,?\s*-?\d+\.\d+,\s*-?\d+\.\d+\s*$/, '').trim();
+    const verified = String(r.verified||'').toUpperCase().includes('VERIFIED');
+    const noGps = !r.lat || !r.lng;
+    
+    let meta = '';
+    if (verified) meta += '<span class="verified">✓ Verified</span>';
+    if (noGps) meta += '<span class="no-gps">⚠ No GPS</span>';
+    if (r.confidence) meta += `<span>${r.confidence}</span>`;
+    
+    return `
+      <div class="result-card" onclick="showDetails(${i})">
+        <div class="rc-row1">
+          <div class="rc-name">${escapeHtml(r.name)}</div>
+          <div class="rc-type ${r.type === 'Hyper' ? 'hyper' : 'apiary'}">${r.type === 'Hyper' ? '⚠️ HYPER' : '🐝 APIARY'}</div>
+        </div>
+        <div class="rc-addr">${escapeHtml(cleanAddr)} · ${escapeHtml(r.township||'')}</div>
+        ${meta ? `<div class="rc-meta">${meta}</div>` : ''}
+      </div>`;
+  }).join('');
+  
+  let footer = '';
+  if (filtered.length > MAX_RENDER) {
+    footer = `<div class="empty" style="padding:20px 10px">Showing ${MAX_RENDER} of ${filtered.length}. Refine search to see more.</div>`;
+  }
+  
+  results.innerHTML = html + footer;
+}
+
+window.showDetails = function(idx) {
+  const r = filtered[idx];
+  currentRecord = r;
+  const cleanAddr = (r.address||'').replace(/,?\s*-?\d+\.\d+,\s*-?\d+\.\d+\s*$/, '').trim();
+  const phones = [
+    r.phoneDay && {label: 'Day', val: r.phoneDay},
+    r.phoneNight && {label: 'Night', val: r.phoneNight},
+    r.phoneAlt && {label: 'Alt', val: r.phoneAlt}
+  ].filter(Boolean);
+  
+  let html = `
+    <div class="d-name">${escapeHtml(r.name)}</div>
+    <div class="d-meta-row">
+      <span class="rc-type ${r.type==='Hyper'?'hyper':'apiary'}">${r.type==='Hyper'?'⚠️ HYPER':'🐝 APIARY'}</span>
+      ${String(r.verified||'').toUpperCase().includes('VERIFIED') ? '<span class="rc-type" style="background:rgba(126,200,80,0.2);color:var(--lime)">✓ VERIFIED</span>' : ''}
+      ${r.confidence ? `<span class="rc-type" style="background:rgba(58,141,222,0.15);color:#5ba8e8">${escapeHtml(r.confidence)}</span>` : ''}
+    </div>
+    <div class="d-row">
+      <span class="d-lbl">Address</span>
+      <span class="d-val">${escapeHtml(cleanAddr)}</span>
+    </div>
+    <div class="d-row">
+      <span class="d-lbl">Township</span>
+      <span class="d-val">${escapeHtml(r.township||'—')}</span>
+    </div>
+    <div class="d-row">
+      <span class="d-lbl">County</span>
+      <span class="d-val">${escapeHtml(r.county||'—')}</span>
+    </div>`;
+  
+  for (const p of phones) {
+    html += `
+    <div class="d-row">
+      <span class="d-lbl">${p.label}</span>
+      <span class="d-val"><a href="tel:${p.val}">${escapeHtml(p.val)}</a></span>
+    </div>`;
+  }
+  
+  if (r.email) {
+    html += `
+    <div class="d-row">
+      <span class="d-lbl">Email</span>
+      <span class="d-val"><a href="mailto:${r.email}">${escapeHtml(r.email)}</a></span>
+    </div>`;
+  }
+  
+  if (r.lat) {
+    html += `
+    <div class="d-row">
+      <span class="d-lbl">GPS</span>
+      <span class="d-val" style="font-family:'DM Mono',monospace;font-size:11px">${r.lat.toFixed(5)}, ${r.lng.toFixed(5)}</span>
+    </div>
+    <div class="d-row">
+      <span class="d-lbl">Map</span>
+      <span class="d-val"><a href="https://www.google.com/maps/search/?api=1&query=${r.lat},${r.lng}" target="_blank">Open in Google Maps ↗</a></span>
+    </div>`;
+  } else {
+    html += `<div class="d-row"><span class="d-lbl">GPS</span><span class="d-val" style="color:#e74c3c">⚠ Not geocoded</span></div>`;
+  }
+  
+  html += `
+    <div class="d-actions">
+      <button class="btn btn-close" onclick="closeDialog()">Close</button>
+      <a href="verify.html" class="btn btn-edit">✏️ Fix in Verify Tool</a>
+    </div>`;
+  
+  document.getElementById('dialogContent').innerHTML = html;
+  document.getElementById('dialog').classList.add('show');
+};
+
+window.closeDialog = function() {
+  document.getElementById('dialog').classList.remove('show');
+};
+
+document.getElementById('dialog').addEventListener('click', (e) => {
+  if (e.target.id === 'dialog') closeDialog();
+});
+
+// Wire up filters
+['searchBox','filterType','filterCounty','filterStatus'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', applyFilters);
+  el.addEventListener('change', applyFilters);
+});
+
+function escapeHtml(s) {
+  return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+</script>
+</body>
+</html>

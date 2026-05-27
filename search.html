@@ -62,6 +62,10 @@ input::placeholder{color:rgba(245,240,232,0.25)}
 .contact-card{background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px;animation:slideIn 0.4s ease both}
 .contact-card.hyper{border-color:rgba(192,57,43,0.35);background:rgba(192,57,43,0.05)}
 .contact-card.apiary{border-color:rgba(232,160,32,0.3);background:rgba(232,160,32,0.04)}
+/* Anti-bulk-copy for employees - allows tapping tel:/mailto: but not text selection */
+body.role-employee .contact-card{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+body.role-employee .contact-card a[href^="tel:"],
+body.role-employee .contact-card a[href^="mailto:"]{user-select:auto;-webkit-user-select:auto;-webkit-touch-callout:default}
 .contact-card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}
 .contact-name{font-size:16px;font-weight:600;line-height:1.3}
 .contact-type-badge{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:4px 8px;border-radius:6px;flex-shrink:0;white-space:nowrap}
@@ -231,6 +235,8 @@ let currentContact = null;
 onAuthStateChanged(auth, async (user) => {
   if (!user) { window.location.href = 'index.html'; return; }
   currentUser = user;
+  const localUser = JSON.parse(localStorage.getItem('lpp_user') || '{}');
+  document.body.classList.add('role-' + (localUser.role || 'employee'));
   loadRegistry();
 });
 
