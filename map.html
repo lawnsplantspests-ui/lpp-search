@@ -31,6 +31,10 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
 .leaflet-popup-content{margin:10px 14px;font-size:13px;line-height:1.45}
 .leaflet-popup-content b{color:var(--lime);font-size:14px}
 .leaflet-popup-close-button{color:var(--cream)!important}
+/* Anti-bulk-copy protection (employees) */
+body.role-employee .leaflet-popup-content{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+body.role-employee .leaflet-popup-content a[href^="tel:"],
+body.role-employee .leaflet-popup-content a[href^="mailto:"]{user-select:auto;-webkit-user-select:auto;-webkit-touch-callout:default}
 .leaflet-control-zoom a{background:rgba(13,31,19,0.9)!important;color:var(--lime)!important;border:1px solid var(--border)!important}
 
 /* Layer toggles */
@@ -235,10 +239,17 @@ let dialogLat = null;
 let dialogLng = null;
 let dialogAddress = '';
 
+let userRole = 'employee';
+let isAdmin = false;
+
 // ── Init ────────────────────────────────────────────────
 onAuthStateChanged(auth, async (user) => {
   if (!user) { window.location.href = 'index.html'; return; }
   currentUser = user;
+  const localUser = JSON.parse(localStorage.getItem('lpp_user') || '{}');
+  userRole = localUser.role || 'employee';
+  isAdmin = (userRole === 'admin');
+  document.body.classList.add('role-' + userRole);
   await loadData();
   initMap();
   startLocationTracking();
@@ -371,7 +382,7 @@ function buildPopup(type, d) {
   const phones = [d.phoneDay, d.phoneNight, d.phoneAlt].filter(p => p);
   const phoneHtml = phones.map(p => `<a href="tel:${p.replace(/[^0-9]/g,'')}" style="color:#7ec850">${p}</a>`).join(' · ');
   
-  const editLink = (d.tab && d.row)
+  const editLink = (isAdmin && d.tab && d.row)
     ? `<br><a href="edit.html" style="display:inline-block;margin-top:6px;font-size:11px;color:#5ba8e8;text-decoration:none;padding:3px 8px;border:1px solid rgba(58,141,222,0.3);border-radius:6px">✏️ Fix Location</a>`
     : '';
   
