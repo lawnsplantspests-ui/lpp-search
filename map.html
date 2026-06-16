@@ -103,6 +103,34 @@ body.role-employee .leaflet-popup-content a[href^="mailto:"]{user-select:auto;-w
 .toast.show{display:block;animation:toastIn 0.3s ease}
 @keyframes toastIn{from{opacity:0;transform:translate(-50%,-20px)}to{opacity:1;transform:translate(-50%,0)}}
 
+/* Satellite toggle (top-right) */
+.sat-toggle{display:inline-flex;align-items:center;gap:5px;color:var(--lime);font-size:13px;font-weight:600;padding:8px 12px;background:rgba(0,0,0,0.4);border:1px solid rgba(126,200,80,0.2);border-radius:10px;cursor:pointer;font-family:'DM Sans',sans-serif;-webkit-appearance:none;min-width:84px;justify-content:center}
+.sat-toggle:active{background:rgba(0,0,0,0.6)}
+.sat-toggle.on{background:rgba(126,200,80,0.18);border-color:var(--lime)}
+
+/* Unregistered hive layer color */
+.layer-btn.active.hive{background:linear-gradient(135deg,#9333ea,#6d28d9)}
+
+/* Placement crosshair */
+.crosshair{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:16;pointer-events:none;display:none}
+.crosshair.show{display:block}
+.crosshair svg{filter:drop-shadow(0 1px 2px rgba(0,0,0,0.9))}
+
+/* Placement instruction banner */
+.place-banner{position:fixed;top:62px;left:50%;transform:translateX(-50%);z-index:17;background:linear-gradient(135deg,#9333ea,#6d28d9);color:#fff;padding:10px 16px;border-radius:24px;font-size:12px;font-weight:600;display:none;box-shadow:0 6px 20px rgba(147,51,234,0.5);max-width:92%;text-align:center;line-height:1.3}
+.place-banner.show{display:block}
+
+/* Placement action bar */
+.place-bar{position:fixed;bottom:0;left:0;right:0;z-index:18;padding:16px 14px calc(16px + env(safe-area-inset-bottom));background:linear-gradient(to top,rgba(13,31,19,0.97) 0%,rgba(13,31,19,0.88) 70%,transparent 100%);display:none;gap:8px;backdrop-filter:blur(10px)}
+.place-bar.show{display:flex}
+.place-btn{flex:1;padding:14px;border-radius:13px;font-size:14px;font-weight:700;border:1px solid var(--border);background:rgba(13,31,19,0.85);color:var(--cream);font-family:'DM Sans',sans-serif;-webkit-appearance:none}
+.place-btn:active{transform:scale(0.98)}
+.place-btn.primary{background:linear-gradient(135deg,#9333ea,#6d28d9);color:#fff;border:none;box-shadow:0 4px 16px rgba(147,51,234,0.45)}
+.place-btn.cancel{flex:0 0 110px;background:rgba(245,240,232,0.08);color:rgba(245,240,232,0.7)}
+
+/* Hide normal chrome while placing */
+body.placing .layer-toggles,body.placing .county-filter,body.placing .stats-overlay,body.placing .bottom-bar{display:none!important}
+
 .hidden{display:none!important}
 </style>
 </head>
@@ -122,7 +150,7 @@ body.role-employee .leaflet-popup-content a[href^="mailto:"]{user-select:auto;-w
   <div class="topbar-row">
     <a href="index.html" class="back">← Dashboard</a>
     <div class="title">LIVE MAP</div>
-    <div style="width:80px"></div>
+    <button class="sat-toggle" id="satToggle" onclick="toggleSatellite()"><span class="sat-ic">🛰</span> <span class="sat-lbl">Satellite</span></button>
   </div>
 </div>
 
@@ -131,6 +159,7 @@ body.role-employee .leaflet-popup-content a[href^="mailto:"]{user-select:auto;-w
   <button class="layer-btn active apiary" id="layerApiary" onclick="toggleLayer('apiary')">🐝 <span id="cApiary">0</span></button>
   <button class="layer-btn active hyper" id="layerHyper" onclick="toggleLayer('hyper')">⚠️ <span id="cHyper">0</span></button>
   <button class="layer-btn active swarm" id="layerSwarm" onclick="toggleLayer('swarm')">🍯 <span id="cSwarm">0</span></button>
+  <button class="layer-btn active hive" id="layerHive" onclick="toggleLayer('hive')">⬢ <span id="cHive">0</span></button>
 </div>
 
 <!-- County filter -->
@@ -159,10 +188,35 @@ body.role-employee .leaflet-popup-content a[href^="mailto:"]{user-select:auto;-w
     <span class="icon">🍯</span>
     <span class="lbl">Log Swarm</span>
   </button>
+  <button class="action-btn" onclick="startHivePlacement()">
+    <span class="icon">⬢</span>
+    <span class="lbl">Mark Hive</span>
+  </button>
   <button class="action-btn" onclick="toggleFollow()">
     <span class="icon" id="followIcon">📍</span>
     <span class="lbl" id="followLabel">Follow</span>
   </button>
+</div>
+
+<!-- Placement crosshair -->
+<div class="crosshair" id="crosshair">
+  <svg width="64" height="64" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="11" fill="none" stroke="#9333ea" stroke-width="2.5"/>
+    <circle cx="32" cy="32" r="2.5" fill="#9333ea"/>
+    <line x1="32" y1="2"  x2="32" y2="17" stroke="#9333ea" stroke-width="2.5"/>
+    <line x1="32" y1="47" x2="32" y2="62" stroke="#9333ea" stroke-width="2.5"/>
+    <line x1="2"  y1="32" x2="17" y2="32" stroke="#9333ea" stroke-width="2.5"/>
+    <line x1="47" y1="32" x2="62" y2="32" stroke="#9333ea" stroke-width="2.5"/>
+  </svg>
+</div>
+
+<!-- Placement instruction banner -->
+<div class="place-banner" id="placeBanner"></div>
+
+<!-- Placement action bar -->
+<div class="place-bar" id="placeBar">
+  <button class="place-btn cancel" onclick="cancelHivePlacement()">✕ Cancel</button>
+  <button class="place-btn primary" id="placePrimaryBtn">✓ Drop Pin</button>
 </div>
 
 <!-- Swarm dialog -->
@@ -202,6 +256,40 @@ body.role-employee .leaflet-popup-content a[href^="mailto:"]{user-select:auto;-w
   </div>
 </div>
 
+<!-- Hive dialog -->
+<div class="dialog-bg" id="hiveDialog">
+  <div class="dialog">
+    <div class="dialog-title" style="color:#a855f7">⬢ Mark Unregistered Hive</div>
+    <div class="dialog-sub">A hive / colony not on the PA Plants registry</div>
+
+    <div class="coords-display" id="hiveCoords">—</div>
+
+    <div class="form-group">
+      <label>Label (optional)</label>
+      <input type="text" id="hiveLabel" placeholder="e.g. Wild colony in oak, behind 123 Oak St">
+    </div>
+
+    <div class="form-group">
+      <label>Status</label>
+      <select id="hiveStatus">
+        <option value="Active">🟢 Active — Present</option>
+        <option value="Removed">✅ Removed — Treated / relocated</option>
+        <option value="Gone">⚪ Gone — No longer present</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea id="hiveNotes" placeholder="Size, hive boxes vs. wild colony, customer name, access notes, etc."></textarea>
+    </div>
+
+    <div class="dialog-actions">
+      <button class="btn-cancel" onclick="closeHiveDialog()">← Back</button>
+      <button class="btn-save" onclick="saveHive()" id="saveHiveBtn" style="background:linear-gradient(135deg,#9333ea,#6d28d9);color:#fff">Save Hive</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast">✓ Done</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -231,14 +319,20 @@ let userLng = null;
 let userAccuracy = null;
 let watchId = null;
 let following = true;
-let layers = { apiary: null, hyper: null, swarm: null };
-let visible = { apiary: true, hyper: true, swarm: true };
+let layers = { apiary: null, hyper: null, swarm: null, hive: null };
+let visible = { apiary: true, hyper: true, swarm: true, hive: true };
 let registry = [];
 let swarms = [];
+let hives = [];
 let locSource = 'gps';
 let dialogLat = null;
 let dialogLng = null;
 let dialogAddress = '';
+
+// Hive placement + base layers
+let placing = false;
+let placedMarker = null;
+let baseStreet = null, baseSat = null, satOn = false, satBeforePlacement = false;
 
 let userRole = 'employee';
 let isAdmin = false;
@@ -263,6 +357,8 @@ async function loadData() {
     if (cachedReg) registry = JSON.parse(cachedReg);
     const cachedSw = localStorage.getItem('lpp_swarms');
     if (cachedSw) swarms = JSON.parse(cachedSw);
+    const cachedHv = localStorage.getItem('lpp_hives');
+    if (cachedHv) hives = JSON.parse(cachedHv);
 
     // Refresh from server
     const res = await fetch(SHEETS_API + '?action=getAll');
@@ -276,6 +372,10 @@ async function loadData() {
       swarms = data.swarms;
       localStorage.setItem('lpp_swarms', JSON.stringify(swarms));
     }
+    if (data.hives) {
+      hives = data.hives;
+      localStorage.setItem('lpp_hives', JSON.stringify(hives));
+    }
   } catch(e) {
     console.error('Load failed:', e);
   }
@@ -285,8 +385,10 @@ function initMap() {
   document.getElementById('loadingOverlay').classList.add('hidden');
   // Center on Harrisburg area by default
   map = L.map('map', { zoomControl: true, attributionControl: false }).setView([40.27, -76.88], 12);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-  L.control.attribution({ position: 'bottomright', prefix: false }).addAttribution('© OpenStreetMap').addTo(map);
+  baseStreet = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
+  baseSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
+  baseStreet.addTo(map);
+  L.control.attribution({ position: 'bottomright', prefix: false }).addAttribution('© OpenStreetMap · Esri').addTo(map);
   
   // Restore saved county filter
   const savedCounty = localStorage.getItem('lpp_county_filter') || '';
@@ -302,11 +404,11 @@ function initMap() {
 function renderAllLayers() {
   // Clear existing
   Object.values(layers).forEach(l => { if (l) map.removeLayer(l); });
-  layers = { apiary: L.layerGroup(), hyper: L.layerGroup(), swarm: L.layerGroup() };
+  layers = { apiary: L.layerGroup(), hyper: L.layerGroup(), swarm: L.layerGroup(), hive: L.layerGroup() };
 
   const countyFilter = document.getElementById('countyFilter')?.value || '';
 
-  let countA = 0, countH = 0, countS = 0;
+  let countA = 0, countH = 0, countS = 0, countV = 0;
 
   for (const r of registry) {
     if (!r.lat || !r.lng) continue;
@@ -325,19 +427,28 @@ function renderAllLayers() {
     layers.swarm.addLayer(marker);
   }
 
+  for (const h of hives) {
+    if (!h.lat || !h.lng) continue;
+    if (countyFilter && h.county && h.county !== countyFilter) continue;
+    countV++;
+    const marker = makeMarker(h.lat, h.lng, 'hive', h);
+    layers.hive.addLayer(marker);
+  }
+
   document.getElementById('cApiary').textContent = countA;
   document.getElementById('cHyper').textContent  = countH;
   document.getElementById('cSwarm').textContent  = countS;
+  document.getElementById('cHive').textContent   = countV;
 
   // Add visible layers to map
-  for (const key of ['apiary','hyper','swarm']) {
+  for (const key of ['apiary','hyper','swarm','hive']) {
     if (visible[key]) layers[key].addTo(map);
   }
 }
 
 function makeMarker(lat, lng, type, data) {
-  const colors = { apiary: '#e8a020', hyper: '#c0392b', swarm: '#7ec850' };
-  const icons  = { apiary: '🐝', hyper: '!', swarm: '🍯' };
+  const colors = { apiary: '#e8a020', hyper: '#c0392b', swarm: '#7ec850', hive: '#9333ea' };
+  const icons  = { apiary: '🐝', hyper: '!', swarm: '🍯', hive: '⬢' };
   const icon = L.divIcon({
     className: 'custom-pin',
     html: `<div style="background:${colors[type]};width:26px;height:26px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;font-weight:700">${icons[type]}</div>`,
@@ -379,7 +490,19 @@ function buildPopup(type, d) {
       <br><span style="font-size:10px;color:rgba(245,240,232,0.4)">Logged by ${escapeHtml(d.loggedBy)}</span>
       ${sourcesHtml}`;
   }
-  
+
+  if (type === 'hive') {
+    const date = d.date ? new Date(d.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : 'Unknown';
+    const statusColor = d.status === 'Active' ? '#7ec850' : d.status === 'Removed' ? '#3a8dde' : 'rgba(245,240,232,0.5)';
+    return `<b style="color:#c084fc">⬢ Unregistered Hive</b><br>
+      ${d.label ? `<b style="font-size:14px;color:#c084fc">${escapeHtml(d.label)}</b><br>` : ''}
+      📅 ${date}<br>
+      📍 ${d.lat.toFixed(6)}, ${d.lng.toFixed(6)}<br>
+      <span style="color:${statusColor}">● ${escapeHtml(d.status || '')}</span>
+      ${d.notes ? `<br><i style="color:rgba(245,240,232,0.7);font-size:12px">"${escapeHtml(d.notes)}"</i>` : ''}
+      <br><span style="font-size:10px;color:rgba(245,240,232,0.4)">Marked by ${escapeHtml(d.loggedBy || '')}</span>`;
+  }
+
   const phones = [d.phoneDay, d.phoneNight, d.phoneAlt].filter(p => p);
   const phoneHtml = phones.map(p => `<a href="tel:${p.replace(/[^0-9]/g,'')}" style="color:#7ec850">${p}</a>`).join(' · ');
   
@@ -409,7 +532,7 @@ function startLocationTracking() {
       userAccuracy = Math.round(pos.coords.accuracy);
       updateUserMarker();
       updateGpsStats();
-      if (following) centerOnMe();
+      if (following && !placing) centerOnMe();
     },
     (err) => {
       document.getElementById('gpsStats').innerHTML = `<span class="error">GPS: ${err.message}</span>`;
@@ -580,6 +703,157 @@ window.saveSwarm = async function() {
   } finally {
     btn.disabled = false;
     btn.innerHTML = 'Save Swarm';
+  }
+};
+
+// ── Satellite base layer ───────────────────────────────
+window.toggleSatellite = function(force) {
+  const want = (typeof force === 'boolean') ? force : !satOn;
+  if (want === satOn) return;
+  satOn = want;
+  if (satOn) { map.removeLayer(baseStreet); baseSat.addTo(map); baseSat.bringToBack(); }
+  else { map.removeLayer(baseSat); baseStreet.addTo(map); baseStreet.bringToBack(); }
+  const b = document.getElementById('satToggle');
+  if (b) {
+    b.classList.toggle('on', satOn);
+    b.querySelector('.sat-ic').textContent = satOn ? '🗺' : '🛰';
+    b.querySelector('.sat-lbl').textContent = satOn ? 'Map' : 'Satellite';
+  }
+};
+
+// ── Unregistered hive placement ────────────────────────
+function hiveDropIcon() {
+  return L.divIcon({
+    className: 'custom-pin',
+    html: `<div style="background:#9333ea;width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;box-shadow:0 3px 12px rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center">
+             <span style="transform:rotate(45deg);font-size:14px;color:#fff;font-weight:700">⬢</span>
+           </div>`,
+    iconSize: [32, 32], iconAnchor: [16, 30]
+  });
+}
+
+function setPlaceBanner(txt) {
+  const b = document.getElementById('placeBanner');
+  b.textContent = txt;
+  b.classList.add('show');
+}
+function showPlaceBar(primaryLabel, primaryFn) {
+  document.getElementById('placeBar').classList.add('show');
+  const pb = document.getElementById('placePrimaryBtn');
+  pb.textContent = primaryLabel;
+  pb.onclick = primaryFn;
+}
+function hidePlaceBar() { document.getElementById('placeBar').classList.remove('show'); }
+
+function fmtDist(ft) {
+  ft = Math.round(ft);
+  return ft >= 1000 ? (ft/5280).toFixed(2) + ' mi' : ft + ' ft';
+}
+function updatePlaceDistance() {
+  if (!placedMarker) return;
+  const ll = placedMarker.getLatLng();
+  const d = (userLat != null) ? ' • ~' + fmtDist(distanceFeet(userLat, userLng, ll.lat, ll.lng)) + ' from you' : '';
+  setPlaceBanner('Drag the pin to fine-tune' + d);
+}
+
+window.startHivePlacement = function() {
+  placing = true;
+  document.body.classList.add('placing');
+  // Jump near the user's position so the hive is on-screen, then let them pan
+  if (userLat != null && userLng != null) map.setView([userLat, userLng], Math.max(map.getZoom(), 18));
+  satBeforePlacement = satOn;
+  toggleSatellite(true); // imagery makes the hive/structure visible
+  document.getElementById('crosshair').classList.add('show');
+  setPlaceBanner('Pan the map so the crosshair sits on the hive, then tap Drop Pin');
+  showPlaceBar('✓ Drop Pin', dropHivePin);
+};
+
+window.dropHivePin = function() {
+  const c = map.getCenter();
+  document.getElementById('crosshair').classList.remove('show');
+  placedMarker = L.marker(c, { draggable: true, icon: hiveDropIcon(), zIndexOffset: 1500 }).addTo(map);
+  placedMarker.on('drag', updatePlaceDistance);
+  placedMarker.on('dragend', updatePlaceDistance);
+  updatePlaceDistance();
+  showPlaceBar('✓ Save Hive', openHiveDetails);
+};
+
+window.cancelHivePlacement = function() {
+  if (placedMarker) { map.removeLayer(placedMarker); placedMarker = null; }
+  placing = false;
+  document.body.classList.remove('placing');
+  document.getElementById('crosshair').classList.remove('show');
+  document.getElementById('placeBanner').classList.remove('show');
+  hidePlaceBar();
+  toggleSatellite(satBeforePlacement);
+};
+
+window.openHiveDetails = function() {
+  if (!placedMarker) return;
+  const ll = placedMarker.getLatLng();
+  document.getElementById('hiveLabel').value = '';
+  document.getElementById('hiveNotes').value = '';
+  document.getElementById('hiveStatus').value = 'Active';
+  const dist = (userLat != null) ? ' • ~' + fmtDist(distanceFeet(userLat, userLng, ll.lat, ll.lng)) + ' from you' : '';
+  document.getElementById('hiveCoords').textContent = ll.lat.toFixed(6) + ', ' + ll.lng.toFixed(6) + dist;
+  document.getElementById('hiveDialog').classList.add('show');
+};
+
+window.closeHiveDialog = function() {
+  // Return to fine-tune mode (pin + place bar stay up)
+  document.getElementById('hiveDialog').classList.remove('show');
+};
+
+window.saveHive = async function() {
+  if (!placedMarker) return;
+  const btn = document.getElementById('saveHiveBtn');
+  const ll = placedMarker.getLatLng();
+  const status = document.getElementById('hiveStatus').value;
+  const label = document.getElementById('hiveLabel').value.trim();
+  const notes = document.getElementById('hiveNotes').value.trim();
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="btn-spinner"></span>Saving...';
+
+  const localUser = JSON.parse(localStorage.getItem('lpp_user') || '{}');
+  const county = document.getElementById('countyFilter')?.value || '';
+
+  const rec = {
+    date: new Date().toISOString(),
+    label: label,
+    address: label || ('GPS: ' + ll.lat.toFixed(6) + ', ' + ll.lng.toFixed(6)),
+    lat: ll.lat, lng: ll.lng,
+    status: status, notes: notes,
+    loggedBy: localUser.name || currentUser.email,
+    loggedByEmail: currentUser.email,
+    county: county
+  };
+
+  try {
+    await fetch(SHEETS_API, {
+      method: 'POST',
+      mode: 'no-cors',
+      body: JSON.stringify({ action: 'addHive', ...rec })
+    });
+
+    hives.unshift(rec);
+    localStorage.setItem('lpp_hives', JSON.stringify(hives));
+
+    // Tear down placement and render the real marker
+    if (placedMarker) { map.removeLayer(placedMarker); placedMarker = null; }
+    placing = false;
+    document.body.classList.remove('placing');
+    document.getElementById('placeBanner').classList.remove('show');
+    hidePlaceBar();
+    document.getElementById('hiveDialog').classList.remove('show');
+    toggleSatellite(satBeforePlacement);
+    renderAllLayers();
+    showToast('✓ Hive marked');
+  } catch(e) {
+    alert('Failed to save: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Save Hive';
   }
 };
 
