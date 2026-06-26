@@ -124,6 +124,7 @@ input::placeholder{color:rgba(245,240,232,0.25)}
       <button class="tab active" onclick="showPanel('users')" id="tabUsers">👥 Users</button>
       <button class="tab" onclick="showPanel('activity')" id="tabActivity">📊 Activity</button>
       <button class="tab" onclick="showPanel('sync')" id="tabSync">🔄 Sync</button>
+      <button class="tab" onclick="showPanel('import')" id="tabImport">📋 Import</button>
     </div>
 
     <!-- USERS PANEL -->
@@ -212,7 +213,14 @@ input::placeholder{color:rgba(245,240,232,0.25)}
           "County" column filled in. It appears in all the filters automatically —
           no app changes needed.
         </div>
-        <a href="import.html" class="btn btn-secondary" style="display:block;text-align:center;text-decoration:none;margin-top:10px">📋 PA Plants Importer →</a>
+      </div>
+    </div>
+
+    <!-- IMPORT PANEL -->
+    <div class="panel" id="panelImport">
+      <div class="section-card" style="padding:10px">
+        <div class="section-title" style="padding:6px 6px 0">📋 PA Plants Importer</div>
+        <iframe id="importFrame" title="PA Plants Importer" style="width:100%;height:78vh;border:none;border-radius:10px;background:transparent"></iframe>
       </div>
     </div>
   </div>
@@ -260,11 +268,15 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 window.showPanel = function(panel) {
-  ['users','activity','sync'].forEach(p => {
+  ['users','activity','sync','import'].forEach(p => {
     document.getElementById('panel' + p.charAt(0).toUpperCase()+p.slice(1)).classList.toggle('show', p === panel);
     document.getElementById('tab' + p.charAt(0).toUpperCase()+p.slice(1)).classList.toggle('active', p === panel);
   });
   if (panel === 'activity' && allActivity.length === 0) loadActivity();
+  if (panel === 'import') {
+    const f = document.getElementById('importFrame');
+    if (!f.src) f.src = 'import.html?embed=1';
+  }
 };
 
 // ── USERS ──────────────────────────────────────────────
