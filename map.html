@@ -166,12 +166,6 @@ body.placing .layer-toggles,body.placing .county-filter,body.placing .stats-over
 <div class="county-filter">
   <select id="countyFilter" onchange="onCountyChange()">
     <option value="">All Counties</option>
-    <option value="Adams">Adams</option>
-          <option value="Dauphin">Dauphin</option>
-    <option value="Cumberland">Cumberland</option>
-    <option value="Perry">Perry</option>
-    <option value="Lebanon">Lebanon</option>
-    <option value="York">York</option>
   </select>
 </div>
 
@@ -381,6 +375,19 @@ async function loadData() {
   }
 }
 
+// Build the county dropdown from every record/swarm/hive in the data.
+// Add a county in the Google Sheet and it shows up here automatically.
+function populateCounties() {
+  const sel = document.getElementById('countyFilter');
+  if (!sel) return;
+  const current = sel.value;
+  const all = [...registry, ...swarms, ...hives].map(r => r.county).filter(Boolean);
+  const counties = [...new Set(all)].sort();
+  sel.innerHTML = '<option value="">All Counties</option>' +
+    counties.map(c => `<option value="${c}">${c}</option>`).join('');
+  sel.value = current;
+}
+
 function initMap() {
   document.getElementById('loadingOverlay').classList.add('hidden');
   // Center on Harrisburg area by default
@@ -390,7 +397,8 @@ function initMap() {
   baseStreet.addTo(map);
   L.control.attribution({ position: 'bottomright', prefix: false }).addAttribution('© OpenStreetMap · Esri').addTo(map);
   
-  // Restore saved county filter
+  // Build the county dropdown from the data, then restore saved filter
+  populateCounties();
   const savedCounty = localStorage.getItem('lpp_county_filter') || '';
   const cf = document.getElementById('countyFilter');
   if (cf) cf.value = savedCounty;
