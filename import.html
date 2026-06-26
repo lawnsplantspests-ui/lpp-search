@@ -72,18 +72,24 @@ textarea:focus{border-color:var(--lime)}
     <div class="out-block" id="apiaryBlock">
       <div class="out-head">
         <div class="ttl">🐝 Apiary rows <small id="apiaryCount"></small></div>
-        <button class="btn-copy" onclick="copyOut('apiaryOut')">Copy</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn-copy" onclick="downloadOut('apiary')">⬇ Download file</button>
+          <button class="btn-copy" onclick="copyOut('apiaryOut')">Copy</button>
+        </div>
       </div>
-      <div style="font-size:12px;color:rgba(245,240,232,0.55);margin-bottom:8px">Paste into the <b>Apiary</b> tab (first empty row, column A).</div>
+      <div style="font-size:12px;color:rgba(245,240,232,0.55);margin-bottom:8px">For the <b>Apiary</b> tab. Paste into the first empty row (column A), or download and open the file.</div>
       <textarea id="apiaryOut" readonly></textarea>
     </div>
 
     <div class="out-block" id="hyperBlock">
       <div class="out-head">
         <div class="ttl">⚠️ Hypersensitive rows <small id="hyperCount"></small></div>
-        <button class="btn-copy" onclick="copyOut('hyperOut')">Copy</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn-copy" onclick="downloadOut('hyper')">⬇ Download file</button>
+          <button class="btn-copy" onclick="copyOut('hyperOut')">Copy</button>
+        </div>
       </div>
-      <div style="font-size:12px;color:rgba(245,240,232,0.55);margin-bottom:8px">Paste into the <b>Hypersensitive</b> tab (first empty row, column A).</div>
+      <div style="font-size:12px;color:rgba(245,240,232,0.55);margin-bottom:8px">For the <b>Hypersensitive</b> tab. Paste into the first empty row (column A), or download and open the file.</div>
       <textarea id="hyperOut" readonly></textarea>
     </div>
 
@@ -96,8 +102,9 @@ textarea:focus{border-color:var(--lime)}
 <div class="toast" id="toast"></div>
 
 <script>
-// Columns in the exact order of the Google Sheet:
-const COLS = ['name','addressType','address','phoneDay','phoneNight','phoneAlt','email','township','county','flag','verified','confidence','type','lat','lng'];
+// Output columns — the 9 columns used in the sheet's Apiary / Hypersensitive tabs.
+// (GPS coordinates ride along inside the address; the Geocoder fills the rest.)
+const COLS = ['name','addressType','address','phoneDay','phoneNight','phoneAlt','email','township','county'];
 
 function parsePaPlants(raw){
   let lines = raw.replace(/\r/g,'').split('\n').filter(l=>{
@@ -159,12 +166,18 @@ function toTSV(recs){
   return recs.map(r=>COLS.map(c=>String(r[c]!=null?r[c]:'').replace(/\t/g,' ').replace(/\n/g,' ')).join('\t')).join('\n');
 }
 
+let lastCounty='county';
 function convert(){
   const raw=document.getElementById('input').value;
   if(!raw.trim()){ toast('Paste the PA Plants results first'); return; }
   const {records,failures}=parsePaPlants(raw);
   const apiary=records.filter(r=>r.type==='Apiary');
   const hyper=records.filter(r=>r.type==='Hyper');
+
+  // Most common county name -> used for the download filenames
+  const counts={};
+  records.forEach(r=>{ const c=(r.county||'').trim(); if(c) counts[c]=(counts[c]||0)+1; });
+  lastCounty=(Object.entries(counts).sort((a,b)=>b[1]-a[1])[0]||['county'])[0].toLowerCase().replace(/[^a-z]+/g,'');
 
   document.getElementById('results').classList.remove('hidden');
   document.getElementById('summary').innerHTML =
@@ -192,6 +205,17 @@ function copyOut(id){
   const ta=document.getElementById(id);
   ta.select(); ta.setSelectionRange(0,99999);
   navigator.clipboard.writeText(ta.value).then(()=>toast('✓ Copied — now paste into the Sheet'),()=>{document.execCommand('copy');toast('✓ Copied');});
+}
+function downloadOut(which){
+  const text=document.getElementById(which==='apiary'?'apiaryOut':'hyperOut').value;
+  if(!text){ toast('Nothing to download'); return; }
+  const fname=`${lastCounty}-${which}-paste.tsv`;
+  const blob=new Blob([text],{type:'text/tab-separated-values'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=fname;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},100);
+  toast('✓ Saved '+fname);
 }
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
 </script>
