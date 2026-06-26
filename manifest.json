@@ -1,6 +1,6 @@
 {
-  "name": "LPP Hyper/Apiary Search",
-  "short_name": "LPP Search",
+  "name": "BeeAware by LPP",
+  "short_name": "BeeAware",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
