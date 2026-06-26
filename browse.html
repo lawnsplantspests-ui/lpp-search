@@ -96,12 +96,6 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
         </select>
         <select id="filterCounty">
           <option value="">All Counties</option>
-          <option value="Adams">Adams</option>
-          <option value="Dauphin">Dauphin</option>
-          <option value="Cumberland">Cumberland</option>
-          <option value="Perry">Perry</option>
-          <option value="Lebanon">Lebanon</option>
-          <option value="York">York</option>
         </select>
         <select id="filterStatus">
           <option value="">All Status</option>
@@ -164,6 +158,7 @@ async function loadRegistry() {
     const cached = localStorage.getItem('lpp_registry_v2');
     if (cached) {
       allRecords = JSON.parse(cached);
+      populateCounties();
       applyFilters();
     }
     const res = await fetch(SHEETS_API + '?action=getRegistry');
@@ -171,11 +166,24 @@ async function loadRegistry() {
     allRecords = data.records || [];
     localStorage.setItem('lpp_registry_v2', JSON.stringify(allRecords));
     localStorage.setItem('lpp_registry_v2_time', Date.now().toString());
+    populateCounties();
     applyFilters();
   } catch(e) {
     document.getElementById('results').innerHTML = 
       `<div class="empty">⚠️ Failed to load: ${e.message}</div>`;
   }
+}
+
+// Build the county dropdown from whatever counties exist in the data.
+// Add a county in the Google Sheet and it shows up here automatically.
+function populateCounties() {
+  const sel = document.getElementById('filterCounty');
+  if (!sel) return;
+  const current = sel.value;
+  const counties = [...new Set(allRecords.map(r => r.county).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">All Counties</option>' +
+    counties.map(c => `<option value="${c}">${c}</option>`).join('');
+  sel.value = current;
 }
 
 function applyFilters() {

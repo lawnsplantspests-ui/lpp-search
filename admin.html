@@ -207,9 +207,10 @@ input::placeholder{color:rgba(245,240,232,0.25)}
       <div class="section-card">
         <div class="section-title">🗺️ Counties</div>
         <div class="info-box">
-          <strong>Currently covered:</strong> Dauphin (✓)<br>
-          <strong>Planned:</strong> York, Perry, Cumberland<br><br>
-          Add records for new counties directly in the Google Sheet. Make sure to fill in the "County" column correctly.
+          <strong>Currently covered:</strong> <span id="countiesCovered">—</span><br><br>
+          To add a new county, just add records in the Google Sheet with the
+          "County" column filled in. It appears in all the filters automatically —
+          no app changes needed.
         </div>
       </div>
     </div>
@@ -410,11 +411,13 @@ function loadSyncStatus() {
   if (cached) {
     const reg = JSON.parse(cached);
     document.getElementById('syncCount').textContent = reg.length + ' records';
-    const counties = [...new Set(reg.map(r => r.county))].join(', ');
-    document.getElementById('counties').textContent = counties || 'Dauphin';
+    const counties = [...new Set(reg.map(r => r.county).filter(Boolean))].sort().join(', ');
+    document.getElementById('counties').textContent = counties || '—';
+    document.getElementById('countiesCovered').textContent = counties || '—';
   } else {
     document.getElementById('syncCount').textContent = 'Not loaded';
-    document.getElementById('counties').textContent = 'Dauphin';
+    document.getElementById('counties').textContent = '—';
+    document.getElementById('countiesCovered').textContent = '—';
   }
   const last = localStorage.getItem('lpp_last_sync');
   document.getElementById('lastSync').textContent = last ? new Date(parseInt(last)).toLocaleString() : 'Never';
