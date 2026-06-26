@@ -40,6 +40,9 @@ textarea:focus{border-color:var(--lime)}
 .warn{background:rgba(232,160,32,0.1);border:1px solid rgba(232,160,32,0.35);border-radius:11px;padding:12px 14px;margin-top:16px;font-size:13px;color:var(--amber);line-height:1.6}
 .warn ul{margin:6px 0 0 18px}
 .hidden{display:none}
+body.embed .back,body.embed .title,body.embed .subtitle{display:none}
+body.embed .container{padding-top:4px;max-width:none}
+body.embed .bg{display:none}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--green);border:1px solid var(--lime);color:var(--cream);padding:11px 20px;border-radius:24px;font-size:13px;font-weight:600;z-index:50;opacity:0;transition:opacity 0.2s;box-shadow:0 8px 24px rgba(0,0,0,0.5)}
 .toast.show{opacity:1}
 </style>
@@ -102,6 +105,9 @@ textarea:focus{border-color:var(--lime)}
 <div class="toast" id="toast"></div>
 
 <script>
+// When loaded inside the admin Import tab (?embed=1), hide our own header chrome.
+if (new URLSearchParams(location.search).get('embed') === '1') document.body.classList.add('embed');
+
 // Output columns — the 9 columns used in the sheet's Apiary / Hypersensitive tabs.
 // (GPS coordinates ride along inside the address; the Geocoder fills the rest.)
 const COLS = ['name','addressType','address','phoneDay','phoneNight','phoneAlt','email','township','county'];
