@@ -128,8 +128,20 @@ body.role-employee .leaflet-popup-content a[href^="mailto:"]{user-select:auto;-w
 .place-btn.primary{background:linear-gradient(135deg,#9333ea,#6d28d9);color:#fff;border:none;box-shadow:0 4px 16px rgba(147,51,234,0.45)}
 .place-btn.cancel{flex:0 0 110px;background:rgba(245,240,232,0.08);color:rgba(245,240,232,0.7)}
 
+/* Quick Add floating button */
+.fab{position:fixed;right:16px;bottom:calc(96px + env(safe-area-inset-bottom));z-index:19;width:56px;height:56px;border-radius:50%;border:none;background:linear-gradient(135deg,var(--lime),var(--green-mid));color:var(--dark);font-size:30px;font-weight:700;line-height:1;box-shadow:0 6px 20px rgba(126,200,80,0.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform 0.2s;-webkit-appearance:none}
+.fab:active{transform:scale(0.94)}
+.fab.open{transform:rotate(45deg)}
+.quick-menu{position:fixed;right:16px;bottom:calc(162px + env(safe-area-inset-bottom));z-index:19;display:none;flex-direction:column;gap:8px;align-items:flex-end}
+.quick-menu.show{display:flex}
+.quick-item{display:flex;align-items:center;gap:8px;padding:11px 16px;border-radius:26px;background:rgba(13,31,19,0.95);color:var(--cream);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,0.5);border:1px solid var(--border);cursor:pointer;-webkit-appearance:none;animation:qaIn 0.18s ease}
+.quick-item .qi-ic{font-size:16px}
+.quick-item.swarm{border-color:rgba(126,200,80,0.5)}
+.quick-item.hive{border-color:rgba(147,51,234,0.5)}
+@keyframes qaIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
 /* Hide normal chrome while placing */
-body.placing .layer-toggles,body.placing .county-filter,body.placing .stats-overlay,body.placing .bottom-bar{display:none!important}
+body.placing .layer-toggles,body.placing .county-filter,body.placing .stats-overlay,body.placing .bottom-bar,body.placing .fab,body.placing .quick-menu{display:none!important}
 
 .hidden{display:none!important}
 </style>
@@ -192,6 +204,13 @@ body.placing .layer-toggles,body.placing .county-filter,body.placing .stats-over
   </button>
 </div>
 
+<!-- Quick Add floating button + menu -->
+<div class="quick-menu" id="quickMenu">
+  <button class="quick-item swarm" onclick="quickAdd('swarm')"><span class="qi-ic">🍯</span> Log Swarm</button>
+  <button class="quick-item hive" onclick="quickAdd('hive')"><span class="qi-ic">⬢</span> Mark Hive</button>
+</div>
+<button class="fab" id="fab" onclick="toggleQuickAdd()" aria-label="Quick add">+</button>
+
 <!-- Placement crosshair -->
 <div class="crosshair" id="crosshair">
   <svg width="64" height="64" viewBox="0 0 64 64">
@@ -209,7 +228,7 @@ body.placing .layer-toggles,body.placing .county-filter,body.placing .stats-over
 
 <!-- Placement action bar -->
 <div class="place-bar" id="placeBar">
-  <button class="place-btn cancel" onclick="cancelHivePlacement()">✕ Cancel</button>
+  <button class="place-btn cancel" onclick="cancelPlacement()">✕ Cancel</button>
   <button class="place-btn primary" id="placePrimaryBtn">✓ Drop Pin</button>
 </div>
 
@@ -222,8 +241,9 @@ body.placing .layer-toggles,body.placing .county-filter,body.placing .stats-over
     <div class="form-group">
       <label>Location Source</label>
       <div class="location-source">
-        <button class="source-btn active" id="srcGPS" onclick="setLocSource('gps')">📍 My Location</button>
-        <button class="source-btn" id="srcManual" onclick="setLocSource('manual')">✍️ Type Address</button>
+        <button class="source-btn active" id="srcGPS" onclick="setLocSource('gps')">📍 Me</button>
+        <button class="source-btn" id="srcPin" onclick="startSwarmPinPlacement()">🗺️ Pin</button>
+        <button class="source-btn" id="srcManual" onclick="setLocSource('manual')">✍️ Address</button>
       </div>
       <div class="coords-display" id="swarmCoords">No location set</div>
       <input type="text" id="swarmAddress" placeholder="123 Main St, Harrisburg PA" class="hidden">
@@ -323,8 +343,9 @@ let dialogLat = null;
 let dialogLng = null;
 let dialogAddress = '';
 
-// Hive placement + base layers
+// Hive/swarm placement + base layers
 let placing = false;
+let placeContext = 'hive';   // 'hive' | 'swarm'
 let placedMarker = null;
 let baseStreet = null, baseSat = null, satOn = false, satBeforePlacement = false;
 
@@ -613,9 +634,10 @@ window.closeSwarmDialog = function() {
 window.setLocSource = function(src) {
   locSource = src;
   document.getElementById('srcGPS').classList.toggle('active', src === 'gps');
+  document.getElementById('srcPin').classList.toggle('active', src === 'pin');
   document.getElementById('srcManual').classList.toggle('active', src === 'manual');
   document.getElementById('swarmAddress').classList.toggle('hidden', src !== 'manual');
-  
+
   if (src === 'gps') {
     if (userLat) {
       dialogLat = userLat;
@@ -624,6 +646,14 @@ window.setLocSource = function(src) {
       document.getElementById('swarmCoords').textContent = dialogAddress;
     } else {
       document.getElementById('swarmCoords').textContent = 'Waiting for GPS...';
+    }
+  } else if (src === 'pin') {
+    // Coords come from a pin the user dropped on the map (see confirmSwarmPin)
+    if (dialogLat != null) {
+      dialogAddress = `Pinned: ${dialogLat.toFixed(6)}, ${dialogLng.toFixed(6)}`;
+      document.getElementById('swarmCoords').textContent = dialogAddress;
+    } else {
+      document.getElementById('swarmCoords').textContent = 'Tap "Pin" to place on the map';
     }
   } else {
     document.getElementById('swarmCoords').textContent = 'Type address below';
@@ -764,29 +794,62 @@ function updatePlaceDistance() {
   setPlaceBanner('Drag the pin to fine-tune' + d);
 }
 
-window.startHivePlacement = function() {
+function swarmDropIcon() {
+  return L.divIcon({
+    className: 'custom-pin',
+    html: `<div style="background:#7ec850;width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;box-shadow:0 3px 12px rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center">
+             <span style="transform:rotate(45deg);font-size:14px">🍯</span>
+           </div>`,
+    iconSize: [32, 32], iconAnchor: [16, 30]
+  });
+}
+
+// Shared placement flow for both unregistered hives and swarms
+window.startHivePlacement = function() { startPlacement('hive'); };
+window.startSwarmPinPlacement = function() {
+  document.getElementById('swarmDialog').classList.remove('show'); // keep entered notes/status
+  startPlacement('swarm');
+};
+
+function startPlacement(context) {
+  placeContext = context;
   placing = true;
   document.body.classList.add('placing');
-  // Jump near the user's position so the hive is on-screen, then let them pan
+  // Jump near the user's position so the spot is on-screen, then let them pan
   if (userLat != null && userLng != null) map.setView([userLat, userLng], Math.max(map.getZoom(), 18));
   satBeforePlacement = satOn;
   toggleSatellite(true); // imagery makes the hive/structure visible
   document.getElementById('crosshair').classList.add('show');
-  setPlaceBanner('Pan the map so the crosshair sits on the hive, then tap Drop Pin');
-  showPlaceBar('✓ Drop Pin', dropHivePin);
-};
+  setPlaceBanner(context === 'swarm'
+    ? 'Pan the map so the crosshair sits on the swarm, then tap Drop Pin'
+    : 'Pan the map so the crosshair sits on the hive, then tap Drop Pin');
+  showPlaceBar('✓ Drop Pin', dropPin);
+}
 
-window.dropHivePin = function() {
+window.dropPin = function() {
   const c = map.getCenter();
   document.getElementById('crosshair').classList.remove('show');
-  placedMarker = L.marker(c, { draggable: true, icon: hiveDropIcon(), zIndexOffset: 1500 }).addTo(map);
+  const icon = placeContext === 'swarm' ? swarmDropIcon() : hiveDropIcon();
+  placedMarker = L.marker(c, { draggable: true, icon, zIndexOffset: 1500 }).addTo(map);
   placedMarker.on('drag', updatePlaceDistance);
   placedMarker.on('dragend', updatePlaceDistance);
   updatePlaceDistance();
-  showPlaceBar('✓ Save Hive', openHiveDetails);
+  if (placeContext === 'swarm') showPlaceBar('✓ Use This Spot', confirmSwarmPin);
+  else showPlaceBar('✓ Save Hive', openHiveDetails);
 };
 
-window.cancelHivePlacement = function() {
+// Swarm: take the dropped pin's coords back into the swarm dialog
+window.confirmSwarmPin = function() {
+  if (!placedMarker) return;
+  const ll = placedMarker.getLatLng();
+  dialogLat = ll.lat;
+  dialogLng = ll.lng;
+  teardownPlacement();
+  document.getElementById('swarmDialog').classList.add('show');
+  setLocSource('pin');
+};
+
+function teardownPlacement() {
   if (placedMarker) { map.removeLayer(placedMarker); placedMarker = null; }
   placing = false;
   document.body.classList.remove('placing');
@@ -794,6 +857,27 @@ window.cancelHivePlacement = function() {
   document.getElementById('placeBanner').classList.remove('show');
   hidePlaceBar();
   toggleSatellite(satBeforePlacement);
+}
+
+window.cancelPlacement = function() {
+  const wasSwarm = (placeContext === 'swarm');
+  teardownPlacement();
+  if (wasSwarm) document.getElementById('swarmDialog').classList.add('show'); // back to the form
+};
+
+// ── Quick Add floating menu ────────────────────────────
+window.toggleQuickAdd = function() {
+  const m = document.getElementById('quickMenu');
+  const f = document.getElementById('fab');
+  const show = !m.classList.contains('show');
+  m.classList.toggle('show', show);
+  f.classList.toggle('open', show);
+};
+
+window.quickAdd = function(kind) {
+  toggleQuickAdd();
+  if (kind === 'swarm') openSwarmDialog();
+  else startHivePlacement();
 };
 
 window.openHiveDetails = function() {
