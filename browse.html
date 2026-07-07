@@ -9,6 +9,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Browse Records — LPP Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=DM+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--green:#1a4d2e;--green-mid:#2d7a47;--lime:#7ec850;--cream:#f5f0e8;--amber:#e8a020;--red:#c0392b;--dark:#0d1f13;--blue:#3a8dde;--border:rgba(126,200,80,0.25)}
@@ -30,6 +31,20 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
 .filter-row select option{background:#0d1f13}
 .name-toggle{display:flex;align-items:center;gap:7px;font-size:12px;color:rgba(245,240,232,0.72);font-weight:600;cursor:pointer;user-select:none;padding:1px}
 .name-toggle input{width:16px;height:16px;accent-color:var(--lime);cursor:pointer;flex-shrink:0}
+
+/* Inline results map */
+.mini-map-wrap{flex-shrink:0;height:240px;position:relative;border-bottom:1px solid var(--border)}
+.mini-map-wrap.hidden{display:none}
+#miniMap{position:absolute;inset:0;background:#1a2620;z-index:1}
+.mini-map-hint{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:5px 10px;font-size:10px;font-family:'DM Mono',monospace;color:rgba(245,240,232,0.65);background:linear-gradient(to top,rgba(13,31,19,0.9),transparent);pointer-events:none;text-align:center}
+.leaflet-container{background:#1a2620;font-family:'DM Sans',sans-serif}
+.leaflet-popup-content-wrapper{background:#1a2620;color:var(--cream);border:1px solid var(--border);border-radius:10px}
+.leaflet-popup-tip{background:#1a2620}
+.leaflet-popup-content{margin:9px 12px;font-size:12px;line-height:1.4}
+.leaflet-popup-content b{color:var(--lime)}
+.leaflet-popup-content a{color:#5ba8e8}
+.leaflet-popup-close-button{color:var(--cream)!important}
+.leaflet-control-zoom a{background:rgba(13,31,19,0.9)!important;color:var(--lime)!important;border:1px solid var(--border)!important}
 
 .results{flex:1;overflow-y:auto;padding:8px 12px 60px;-webkit-overflow-scrolling:touch}
 .result-card{background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:11px;padding:11px 13px;margin-bottom:7px;cursor:pointer;transition:background 0.15s}
@@ -109,6 +124,11 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
       <label class="name-toggle"><input type="checkbox" id="nameOnly"> Name only — search just the name field</label>
     </div>
 
+    <div class="mini-map-wrap hidden" id="miniMapWrap">
+      <div id="miniMap"></div>
+      <div class="mini-map-hint" id="miniMapHint"></div>
+    </div>
+
     <div class="results" id="results">
       <div class="loading">
         <div class="spinner"></div>
@@ -123,6 +143,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
   </div>
 </div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -144,6 +165,8 @@ let allRecords = [];
 let filtered = [];
 let currentRecord = null;
 const MAX_RENDER = 200; // Render at most 200 cards at a time for performance
+const MAX_MAP = 300;    // Only show the map for a focused result set
+let miniMap = null, miniMarkers = null;
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) { window.location.href = 'index.html'; return; }
@@ -256,6 +279,63 @@ function render() {
   }
   
   results.innerHTML = html + footer;
+  updateMap();
+}
+
+// ── Inline results map ─────────────────────────────────
+function ensureMap() {
+  if (miniMap) return;
+  miniMap = L.map('miniMap', { zoomControl: true, attributionControl: false }).setView([40.27, -76.88], 9);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(miniMap);
+  miniMarkers = L.layerGroup().addTo(miniMap);
+}
+
+function pinIcon(type) {
+  const color = type === 'Hyper' ? '#c0392b' : '#e8a020';
+  const ic = type === 'Hyper' ? '!' : '🐝';
+  return L.divIcon({
+    className: 'custom-pin',
+    html: `<div style="background:${color};width:24px;height:24px;border-radius:50%;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:700">${ic}</div>`,
+    iconSize: [24, 24], iconAnchor: [12, 12]
+  });
+}
+
+function updateMap() {
+  const wrap = document.getElementById('miniMapWrap');
+  const mappable = filtered.filter(r => r.lat && r.lng);
+
+  // Show the map once the results are narrowed down and at least one has GPS
+  if (mappable.length === 0 || filtered.length > MAX_MAP) {
+    wrap.classList.add('hidden');
+    return;
+  }
+
+  wrap.classList.remove('hidden');
+  ensureMap();
+  miniMap.invalidateSize(); // container was just un-hidden
+  miniMarkers.clearLayers();
+
+  const pts = [];
+  for (const r of mappable.slice(0, MAX_MAP)) {
+    const cleanAddr = (r.address || '').replace(/,?\s*-?\d+\.\d+,\s*-?\d+\.\d+\s*$/, '').trim();
+    const m = L.marker([r.lat, r.lng], { icon: pinIcon(r.type) });
+    m.bindPopup(
+      `<b>${escapeHtml(r.name)}</b><br>${escapeHtml(cleanAddr)}` +
+      `<br><a href="https://www.google.com/maps/search/?api=1&query=${r.lat},${r.lng}" target="_blank">Open in Google Maps ↗</a>`
+    );
+    miniMarkers.addLayer(m);
+    pts.push([r.lat, r.lng]);
+  }
+
+  const noGps = filtered.length - mappable.length;
+  document.getElementById('miniMapHint').textContent =
+    `${mappable.length} on map${noGps > 0 ? ` · ${noGps} without GPS` : ''}`;
+
+  if (pts.length === 1) miniMap.setView(pts[0], 15);
+  else miniMap.fitBounds(pts, { padding: [30, 30], maxZoom: 15 });
+
+  // Auto-open the popup when there's exactly one match
+  if (pts.length === 1) miniMarkers.getLayers()[0].openPopup();
 }
 
 window.showDetails = function(idx) {
