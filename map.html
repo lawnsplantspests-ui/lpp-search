@@ -345,10 +345,11 @@ let dialogAddress = '';
 
 // Hive/swarm placement + base layers
 let placing = false;
-let placeContext = 'hive';   // 'hive' | 'swarm' | 'hiveMove'
+let placeContext = 'hive';   // 'hive' | 'swarm' | 'move'
 let placedMarker = null;
-let editingHiveId = null;    // id (sheet row) of the hive being moved
-let editingHiveAddr = '';    // its existing address text
+let moveKind = null;         // 'hive' | 'swarm' — what's being relocated
+let editingMoveId = null;    // id (sheet row) of the record being moved
+let editingMoveAddr = '';    // its existing address text
 let baseStreet = null, baseSat = null, satOn = false, satBeforePlacement = false;
 
 let userRole = 'employee';
@@ -513,12 +514,15 @@ function buildPopup(type, d) {
       sourcesHtml += '</div>';
     }
     
+    const moveLink = (isAdmin && d.id)
+      ? `<br><a href="#" onclick="startSwarmMove(${d.id});return false;" style="display:inline-block;margin-top:6px;font-size:11px;color:#7ec850;text-decoration:none;padding:3px 8px;border:1px solid rgba(126,200,80,0.4);border-radius:6px">🗺️ Move / Fix Location</a>`
+      : '';
     return `<b>🍯 Swarm</b><br>
       📅 ${date}<br>
       📍 ${escapeHtml(d.address || 'GPS only')}<br>
       <span style="color:${statusColor}">● ${d.status}</span>
       ${d.notes ? `<br><i style="color:rgba(245,240,232,0.7);font-size:12px">"${escapeHtml(d.notes)}"</i>` : ''}
-      <br><span style="font-size:10px;color:rgba(245,240,232,0.4)">Logged by ${escapeHtml(d.loggedBy)}</span>
+      <br><span style="font-size:10px;color:rgba(245,240,232,0.4)">Logged by ${escapeHtml(d.loggedBy)}</span>${moveLink}
       ${sourcesHtml}`;
   }
 
@@ -866,8 +870,9 @@ function teardownPlacement() {
 
 window.cancelPlacement = function() {
   const wasSwarm = (placeContext === 'swarm');
-  editingHiveId = null;
-  editingHiveAddr = '';
+  moveKind = null;
+  editingMoveId = null;
+  editingMoveAddr = '';
   teardownPlacement();
   if (wasSwarm) document.getElementById('swarmDialog').classList.add('show'); // back to the form
 };
@@ -887,34 +892,41 @@ window.quickAdd = function(kind) {
   else startHivePlacement();
 };
 
-// ── Move an existing unregistered hive (admin) ─────────
-window.startHiveMove = function(id) {
-  const h = hives.find(x => x.id === id);
-  if (!h || h.lat == null || h.lng == null) { showToast('Hive not found'); return; }
+// ── Move an existing hive or swarm (admin) ─────────────
+window.startHiveMove  = function(id) { startMove('hive', id); };
+window.startSwarmMove = function(id) { startMove('swarm', id); };
+
+function startMove(kind, id) {
+  const rec = (kind === 'hive' ? hives : swarms).find(x => x.id === id);
+  if (!rec || rec.lat == null || rec.lng == null) { showToast('Record not found'); return; }
   map.closePopup();
-  editingHiveId = id;
-  editingHiveAddr = h.address || '';
-  placeContext = 'hiveMove';
+  moveKind = kind;
+  editingMoveId = id;
+  editingMoveAddr = rec.address || '';
+  placeContext = 'move';
   placing = true;
   document.body.classList.add('placing');
   satBeforePlacement = satOn;
   toggleSatellite(true);
-  map.setView([h.lat, h.lng], Math.max(map.getZoom(), 18));
+  map.setView([rec.lat, rec.lng], Math.max(map.getZoom(), 18));
   // Drop a draggable pin on its current spot so you can nudge it to the right place
-  placedMarker = L.marker([h.lat, h.lng], { draggable: true, icon: hiveDropIcon(), zIndexOffset: 1500 }).addTo(map);
+  const icon = kind === 'hive' ? hiveDropIcon() : swarmDropIcon();
+  placedMarker = L.marker([rec.lat, rec.lng], { draggable: true, icon, zIndexOffset: 1500 }).addTo(map);
   placedMarker.on('drag', updatePlaceDistance);
   placedMarker.on('dragend', updatePlaceDistance);
-  setPlaceBanner('Drag the pin to the hive’s correct location, then tap Save');
-  showPlaceBar('✓ Save New Location', saveHiveMove);
-};
+  setPlaceBanner('Drag the pin to the correct location, then tap Save');
+  showPlaceBar('✓ Save New Location', saveMove);
+}
 
-window.saveHiveMove = async function() {
-  if (!placedMarker || editingHiveId == null) return;
+window.saveMove = async function() {
+  if (!placedMarker || editingMoveId == null) return;
   const btn = document.getElementById('placePrimaryBtn');
   const ll = placedMarker.getLatLng();
-  // Keep a real label/address as-is; refresh coords only for GPS-based hives
-  const isGps = editingHiveAddr === '' || /^gps:/i.test(editingHiveAddr) || /^-?\d+\.\d+,\s*-?\d+\.\d+/.test(editingHiveAddr);
-  const newAddr = isGps ? ('GPS: ' + ll.lat.toFixed(6) + ', ' + ll.lng.toFixed(6)) : editingHiveAddr;
+  // Keep a typed address/label as-is; refresh coords only for GPS/pin-based records
+  const isGps = editingMoveAddr === '' || /^gps:/i.test(editingMoveAddr) ||
+                /^pinned:/i.test(editingMoveAddr) || /^-?\d+\.\d+,\s*-?\d+\.\d+/.test(editingMoveAddr);
+  const newAddr = isGps ? ('GPS: ' + ll.lat.toFixed(6) + ', ' + ll.lng.toFixed(6)) : editingMoveAddr;
+  const action = moveKind === 'hive' ? 'updateHive' : 'updateSwarm';
 
   btn.disabled = true;
   btn.innerHTML = '<span class="btn-spinner"></span>Saving...';
@@ -923,19 +935,21 @@ window.saveHiveMove = async function() {
     await fetch(SHEETS_API, {
       method: 'POST',
       mode: 'no-cors',
-      body: JSON.stringify({ action: 'updateHive', id: editingHiveId, lat: ll.lat, lng: ll.lng, address: newAddr })
+      body: JSON.stringify({ action, id: editingMoveId, lat: ll.lat, lng: ll.lng, address: newAddr })
     });
 
     // Update local copy immediately (no-cors gives no readable response)
-    const h = hives.find(x => x.id === editingHiveId);
-    if (h) { h.lat = ll.lat; h.lng = ll.lng; h.address = newAddr; }
-    localStorage.setItem('lpp_hives', JSON.stringify(hives));
+    const list = moveKind === 'hive' ? hives : swarms;
+    const rec = list.find(x => x.id === editingMoveId);
+    if (rec) { rec.lat = ll.lat; rec.lng = ll.lng; rec.address = newAddr; }
+    localStorage.setItem(moveKind === 'hive' ? 'lpp_hives' : 'lpp_swarms', JSON.stringify(list));
 
-    editingHiveId = null;
-    editingHiveAddr = '';
+    moveKind = null;
+    editingMoveId = null;
+    editingMoveAddr = '';
     teardownPlacement();
     renderAllLayers();
-    showToast('✓ Hive location updated');
+    showToast('✓ Location updated');
   } catch(e) {
     alert('Failed to save: ' + e.message);
   } finally {
