@@ -160,7 +160,7 @@ body.placing .layer-toggles,body.placing .county-filter,body.placing .stats-over
 <!-- Top bar -->
 <div class="topbar">
   <div class="topbar-row">
-    <a href="index.html" class="back">← Dashboard</a>
+    <a href="index.html" class="back" id="backBtn">← Dashboard</a>
     <div class="title">LIVE MAP</div>
     <button class="sat-toggle" id="satToggle" onclick="toggleSatellite()"><span class="sat-ic">🛰</span> <span class="sat-lbl">Satellite</span></button>
   </div>
@@ -441,6 +441,14 @@ function focusFromUrl() {
   const p = new URLSearchParams(location.search);
   const tab = p.get('tab'), row = p.get('row');
   if (!tab || !row) return;
+  // Retarget the top-left back button to return to the search we came from
+  const back = document.getElementById('backBtn');
+  if (back) {
+    back.textContent = '← Back to Search';
+    back.href = 'browse.html';
+    back.onclick = (e) => { e.preventDefault(); if (history.length > 1) history.back(); else location.href = 'browse.html'; };
+  }
+
   const rec = registry.find(r => r.tab === tab && String(r.row) === String(row));
   if (!rec || !rec.lat || !rec.lng) { showToast('That record has no map location yet'); return; }
 
