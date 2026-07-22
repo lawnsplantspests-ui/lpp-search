@@ -81,6 +81,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
 .d-actions .btn{flex:1;padding:11px;font-size:12px;font-weight:700;border:none;border-radius:9px;cursor:pointer;font-family:'DM Sans',sans-serif;-webkit-appearance:none}
 .btn-close{background:rgba(245,240,232,0.08);color:rgba(245,240,232,0.7);border:1px solid rgba(245,240,232,0.15)}
 .btn-edit{background:rgba(232,160,32,0.15);color:var(--amber);border:1px solid rgba(232,160,32,0.4);text-decoration:none;text-align:center;display:flex;align-items:center;justify-content:center}
+.btn-map{background:linear-gradient(135deg,var(--lime),var(--green-mid));color:var(--dark);text-decoration:none;text-align:center;display:flex;align-items:center;justify-content:center}
 
 .no-access{text-align:center;padding:60px 20px}
 .no-access h2{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--red);margin-bottom:10px}
@@ -398,7 +399,12 @@ window.showDetails = function(idx) {
     html += `<div class="d-row"><span class="d-lbl">GPS</span><span class="d-val" style="color:#e74c3c">⚠ Not geocoded</span></div>`;
   }
   
+  const mapBtn = (r.lat && r.lng && r.tab && r.row)
+    ? `<a href="map.html?tab=${encodeURIComponent(r.tab)}&row=${r.row}" class="btn btn-map">📍 View on Live Map</a>`
+    : '';
+
   html += `
+    ${mapBtn ? `<div class="d-actions">${mapBtn}</div>` : ''}
     <div class="d-actions">
       <button class="btn btn-close" onclick="closeDialog()">Close</button>
       <a href="verify.html" class="btn btn-edit">✏️ Fix in Verify Tool</a>
