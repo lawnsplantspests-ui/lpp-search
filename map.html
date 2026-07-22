@@ -140,8 +140,20 @@ body.role-employee .leaflet-popup-content a[href^="mailto:"]{user-select:auto;-w
 .quick-item.hive{border-color:rgba(147,51,234,0.5)}
 @keyframes qaIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
+/* Measure tool */
+.measure-fab{position:fixed;left:16px;bottom:calc(96px + env(safe-area-inset-bottom));z-index:19;width:52px;height:52px;border-radius:50%;border:1px solid var(--border);background:rgba(13,31,19,0.92);color:var(--lime);font-size:22px;box-shadow:0 6px 20px rgba(0,0,0,0.5);cursor:pointer;-webkit-appearance:none;display:flex;align-items:center;justify-content:center}
+.measure-fab:active{transform:scale(0.94)}
+.measure-banner{position:fixed;top:62px;left:50%;transform:translateX(-50%);z-index:17;background:linear-gradient(135deg,#3a8dde,#2a6bb0);color:#fff;padding:10px 16px;border-radius:24px;font-size:12.5px;font-weight:600;display:none;box-shadow:0 6px 20px rgba(58,141,222,0.5);max-width:92%;text-align:center;line-height:1.35}
+.measure-banner.show{display:block}
+.measure-bar{position:fixed;bottom:0;left:0;right:0;z-index:18;padding:16px 14px calc(16px + env(safe-area-inset-bottom));background:linear-gradient(to top,rgba(13,31,19,0.97) 0%,rgba(13,31,19,0.88) 70%,transparent 100%);display:none;gap:8px;backdrop-filter:blur(10px)}
+.measure-bar.show{display:flex}
+.measure-btn{flex:1;padding:13px;border-radius:12px;font-size:13px;font-weight:700;border:1px solid var(--border);background:rgba(13,31,19,0.85);color:var(--cream);font-family:'DM Sans',sans-serif;-webkit-appearance:none}
+.measure-btn:active{transform:scale(0.98)}
+.measure-btn.primary{background:linear-gradient(135deg,#3a8dde,#2a6bb0);color:#fff;border:none}
+body.measuring .bottom-bar,body.measuring .fab,body.measuring .quick-menu,body.measuring .measure-fab{display:none!important}
+
 /* Hide normal chrome while placing */
-body.placing .layer-toggles,body.placing .county-filter,body.placing .stats-overlay,body.placing .bottom-bar,body.placing .fab,body.placing .quick-menu{display:none!important}
+body.placing .layer-toggles,body.placing .county-filter,body.placing .stats-overlay,body.placing .bottom-bar,body.placing .fab,body.placing .quick-menu,body.placing .measure-fab{display:none!important}
 
 .hidden{display:none!important}
 </style>
@@ -210,6 +222,15 @@ body.placing .layer-toggles,body.placing .county-filter,body.placing .stats-over
   <button class="quick-item hive" onclick="quickAdd('hive')"><span class="qi-ic">⬢</span> Mark Hive</button>
 </div>
 <button class="fab" id="fab" onclick="toggleQuickAdd()" aria-label="Quick add">+</button>
+
+<!-- Measure tool -->
+<button class="measure-fab" id="measureFab" onclick="toggleMeasure()" aria-label="Measure distance">📏</button>
+<div class="measure-banner" id="measureBanner"></div>
+<div class="measure-bar" id="measureBar">
+  <button class="measure-btn" onclick="measureFromMe()">🎯 From Me</button>
+  <button class="measure-btn" onclick="clearMeasure()">↺ Clear</button>
+  <button class="measure-btn primary" onclick="exitMeasure()">✓ Done</button>
+</div>
 
 <!-- Placement crosshair -->
 <div class="crosshair" id="crosshair">
@@ -352,6 +373,12 @@ let placedMarker = null;
 let moveKind = null;         // 'hive' | 'swarm' — what's being relocated
 let editingMoveId = null;    // id (sheet row) of the record being moved
 let editingMoveAddr = '';    // its existing address text
+
+// Measure tool
+let measuring = false;
+let measurePts = [];         // [{lat,lng,label}]
+let measureMarkers = [];
+let measureLine = null;
 let baseStreet = null, baseSat = null, satOn = false, satBeforePlacement = false;
 
 let userRole = 'employee';
@@ -1082,6 +1109,119 @@ window.saveHive = async function() {
     btn.innerHTML = 'Save Hive';
   }
 };
+
+// ── Measure tool ───────────────────────────────────────
+window.toggleMeasure = function() {
+  if (measuring) { exitMeasure(); return; }
+  if (placing) return;               // don't overlap the placement flow
+  measuring = true;
+  document.body.classList.add('measuring');
+  measurePts = [];
+  redrawMeasure();
+  document.getElementById('measureBar').classList.add('show');
+  map.on('click', onMeasureClick);
+  map.on('popupopen', onMeasurePopup);
+};
+
+window.exitMeasure = function() {
+  measuring = false;
+  document.body.classList.remove('measuring');
+  document.getElementById('measureBar').classList.remove('show');
+  document.getElementById('measureBanner').classList.remove('show');
+  map.off('click', onMeasureClick);
+  map.off('popupopen', onMeasurePopup);
+  clearMeasure();
+};
+
+window.clearMeasure = function() {
+  measurePts = [];
+  redrawMeasure();
+};
+
+window.measureFromMe = function() {
+  if (userLat == null) { showToast('Still locating…'); return; }
+  addMeasurePoint({ lat: userLat, lng: userLng, label: 'Your location' });
+};
+
+function addMeasurePoint(pt) {
+  if (measurePts.length >= 2) measurePts = [];  // third tap starts a new measurement
+  measurePts.push(pt);
+  redrawMeasure();
+}
+
+// Empty-map taps set a plain point; taps on a pin come through onMeasurePopup
+function onMeasureClick(e) {
+  addMeasurePoint({ lat: e.latlng.lat, lng: e.latlng.lng, label: labelAt(e.latlng.lat, e.latlng.lng) });
+}
+
+// Tapping a pin opens its popup — grab that exact location and use it as a point
+function onMeasurePopup(e) {
+  if (!measuring) return;
+  const ll = e.popup.getLatLng();
+  if (!ll) return;
+  addMeasurePoint({ lat: ll.lat, lng: ll.lng, label: labelAt(ll.lat, ll.lng) });
+  map.closePopup(e.popup);
+}
+
+function measureDot() {
+  return L.divIcon({
+    className: 'measure-dot',
+    html: '<div style="background:#3a8dde;width:18px;height:18px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.6)"></div>',
+    iconSize: [18, 18], iconAnchor: [9, 9]
+  });
+}
+
+function redrawMeasure() {
+  measureMarkers.forEach(m => map.removeLayer(m));
+  measureMarkers = [];
+  if (measureLine) { map.removeLayer(measureLine); measureLine = null; }
+
+  measurePts.forEach(p => {
+    const mk = L.marker([p.lat, p.lng], { icon: measureDot(), interactive: false, zIndexOffset: 2000 }).addTo(map);
+    measureMarkers.push(mk);
+  });
+
+  if (measurePts.length === 2) {
+    const [A, B] = measurePts;
+    measureLine = L.polyline([[A.lat, A.lng], [B.lat, B.lng]],
+      { color: '#3a8dde', weight: 3, dashArray: '6,7', interactive: false }).addTo(map);
+    const ft = distanceFeet(A.lat, A.lng, B.lat, B.lng);
+    const to = B.label ? ` — to ${escapeHtml(B.label)}` : (A.label ? ` — from ${escapeHtml(A.label)}` : '');
+    setMeasureBanner(`📏 ${fmtMeasure(ft)}${to}`);
+  } else if (measurePts.length === 1) {
+    setMeasureBanner('Now tap an apiary pin (or another spot) to measure the distance');
+  } else {
+    setMeasureBanner('Tap a start point, or 🎯 From Me — then tap an apiary');
+  }
+}
+
+function setMeasureBanner(txt) {
+  const b = document.getElementById('measureBanner');
+  if (!measuring) { b.classList.remove('show'); return; }  // don't resurrect after exit
+  b.textContent = txt;
+  b.classList.add('show');
+}
+
+// Distance in a human-friendly form: feet up close, miles further out
+function fmtMeasure(ft) {
+  ft = Math.round(ft);
+  if (ft < 1000) return `${ft.toLocaleString()} ft`;
+  return `${(ft / 5280).toFixed(2)} mi  (${ft.toLocaleString()} ft)`;
+}
+
+// Name of a mapped record at these coords (so "to Smith Apiary" shows up)
+function labelAt(lat, lng) {
+  let best = null, bd = Infinity;
+  const consider = (la, ln, name) => {
+    if (la == null || ln == null) return;
+    const d = distanceFeet(lat, lng, la, ln);
+    if (d < bd) { bd = d; best = name; }
+  };
+  for (const r of registry) consider(r.lat, r.lng, r.name);
+  for (const h of hives)    consider(h.lat, h.lng, h.label || 'Unregistered hive');
+  for (const s of swarms)   consider(s.lat, s.lng, 'Swarm');
+  return (best && bd < 15) ? best : '';   // only label if the tap landed essentially on a pin
+}
 
 // ── Helpers ────────────────────────────────────────────
 function distanceFeet(lat1, lng1, lat2, lng2) {
