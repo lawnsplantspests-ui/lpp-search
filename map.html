@@ -428,9 +428,41 @@ function initMap() {
   if (cf) cf.value = savedCounty;
   
   renderAllLayers();
-  
+
   // Stop following when user pans manually
   map.on('dragstart', () => { if (following) toggleFollow(); });
+
+  // If we arrived from Browse (map.html?tab=..&row=..), jump to that record
+  focusFromUrl();
+}
+
+// Center on a specific registry record passed via URL (tab + row, no PII in the URL)
+function focusFromUrl() {
+  const p = new URLSearchParams(location.search);
+  const tab = p.get('tab'), row = p.get('row');
+  if (!tab || !row) return;
+  const rec = registry.find(r => r.tab === tab && String(r.row) === String(row));
+  if (!rec || !rec.lat || !rec.lng) { showToast('That record has no map location yet'); return; }
+
+  // Clear any county filter and force its layer on so the pin is guaranteed visible
+  const cf = document.getElementById('countyFilter');
+  if (cf && cf.value) { cf.value = ''; localStorage.setItem('lpp_county_filter', ''); }
+  const layerKey = rec.type === 'Apiary' ? 'apiary' : 'hyper';
+  visible[layerKey] = true;
+  renderAllLayers();
+  const lb = document.getElementById('layer' + layerKey.charAt(0).toUpperCase() + layerKey.slice(1));
+  if (lb) lb.classList.add('active');
+
+  // Stop auto-follow so the GPS fix doesn't yank the view back to the user
+  following = false;
+  document.getElementById('followIcon').textContent = '📌';
+  document.getElementById('followLabel').textContent = 'Follow';
+
+  map.setView([rec.lat, rec.lng], 17);
+  L.popup({ maxWidth: 280 })
+    .setLatLng([rec.lat, rec.lng])
+    .setContent(buildPopup(layerKey, rec))
+    .openOn(map);
 }
 
 function renderAllLayers() {
