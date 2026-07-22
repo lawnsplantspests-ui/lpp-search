@@ -333,6 +333,7 @@ let userLng = null;
 let userAccuracy = null;
 let watchId = null;
 let following = true;
+let programmaticMove = false;   // true while the app (not the user) is moving the map
 let layers = { apiary: null, hyper: null, swarm: null, hive: null };
 let visible = { apiary: true, hyper: true, swarm: true, hive: true };
 let registry = [];
@@ -429,8 +430,12 @@ function initMap() {
   
   renderAllLayers();
 
-  // Stop following when user pans manually
+  // Stop following when the USER pans or zooms (not when the app moves the map)
   map.on('dragstart', () => { if (following) toggleFollow(); });
+  map.on('zoomstart', () => { if (!programmaticMove && following) toggleFollow(); });
+  // Clear the app-move flag once the move settles
+  map.on('moveend', () => { programmaticMove = false; });
+  map.on('zoomend', () => { programmaticMove = false; });
 
   // If we arrived from Browse (map.html?tab=..&row=..), jump to that record
   focusFromUrl();
@@ -610,7 +615,11 @@ function startLocationTracking() {
       userAccuracy = Math.round(pos.coords.accuracy);
       updateUserMarker();
       updateGpsStats();
-      if (following && !placing) centerOnMe();
+      // Auto-follow: gently pan to the user WITHOUT changing their zoom level
+      if (following && !placing) {
+        programmaticMove = true;
+        map.panTo([userLat, userLng]);
+      }
     },
     (err) => {
       document.getElementById('gpsStats').innerHTML = `<span class="error">GPS: ${err.message}</span>`;
@@ -638,6 +647,7 @@ function updateGpsStats() {
 
 window.centerOnMe = function() {
   if (userLat && userLng) {
+    programmaticMove = true;
     map.setView([userLat, userLng], Math.max(map.getZoom(), 16));
     if (!following) toggleFollow();
   } else {
