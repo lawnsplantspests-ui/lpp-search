@@ -187,6 +187,7 @@ async function loadRegistry() {
     if (cached) {
       allRecords = JSON.parse(cached);
       populateCounties();
+      restoreSearchState();
       applyFilters();
     }
     const res = await fetch(SHEETS_API + '?action=getRegistry');
@@ -195,6 +196,7 @@ async function loadRegistry() {
     localStorage.setItem('lpp_registry_v2', JSON.stringify(allRecords));
     localStorage.setItem('lpp_registry_v2_time', Date.now().toString());
     populateCounties();
+    restoreSearchState();
     applyFilters();
   } catch(e) {
     document.getElementById('results').innerHTML = 
@@ -239,8 +241,35 @@ function applyFilters() {
   
   // Sort: verified first, then by name
   filtered.sort((a,b) => (a.name||'').localeCompare(b.name||''));
-  
+
+  saveSearchState();
   render();
+}
+
+// Remember the search across a jump to the Live Map and back
+let restoredOnce = false;
+function restoreSearchState() {
+  if (restoredOnce) return;
+  restoredOnce = true;
+  try {
+    const s = JSON.parse(sessionStorage.getItem('lpp_browse_search') || '{}');
+    if (s.q != null) document.getElementById('searchBox').value = s.q;
+    if (s.nameOnly != null) document.getElementById('nameOnly').checked = !!s.nameOnly;
+    if (s.type != null) document.getElementById('filterType').value = s.type;
+    if (s.county != null) document.getElementById('filterCounty').value = s.county;
+    if (s.status != null) document.getElementById('filterStatus').value = s.status;
+  } catch(e) {}
+}
+function saveSearchState() {
+  try {
+    sessionStorage.setItem('lpp_browse_search', JSON.stringify({
+      q: document.getElementById('searchBox').value,
+      nameOnly: document.getElementById('nameOnly').checked,
+      type: document.getElementById('filterType').value,
+      county: document.getElementById('filterCounty').value,
+      status: document.getElementById('filterStatus').value
+    }));
+  } catch(e) {}
 }
 
 function render() {
