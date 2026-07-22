@@ -58,6 +58,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
 .rc-meta{font-size:10px;color:rgba(245,240,232,0.4);font-family:'DM Mono',monospace;margin-top:3px;display:flex;gap:8px;flex-wrap:wrap}
 .rc-meta .verified{color:var(--lime)}
 .rc-meta .no-gps{color:#e74c3c}
+.rc-tap{font-size:10px;color:var(--lime);font-weight:600;margin-top:5px;opacity:0.85}
 
 .empty{padding:40px 20px;text-align:center;color:rgba(245,240,232,0.4);font-size:13px}
 .loading{padding:40px 20px;text-align:center}
@@ -264,13 +265,14 @@ function render() {
     if (r.confidence) meta += `<span>${r.confidence}</span>`;
     
     return `
-      <div class="result-card" onclick="showDetails(${i})">
+      <div class="result-card" onclick="openResult(${i})">
         <div class="rc-row1">
           <div class="rc-name">${escapeHtml(r.name)}</div>
           <div class="rc-type ${r.type === 'Hyper' ? 'hyper' : 'apiary'}">${r.type === 'Hyper' ? '⚠️ HYPER' : '🐝 APIARY'}</div>
         </div>
         <div class="rc-addr">${escapeHtml(cleanAddr)} · ${escapeHtml(r.township||'')}</div>
         ${meta ? `<div class="rc-meta">${meta}</div>` : ''}
+        ${(r.lat && r.lng) ? '<div class="rc-tap">📍 Tap to view on Live Map →</div>' : ''}
       </div>`;
   }).join('');
   
@@ -338,6 +340,17 @@ function updateMap() {
   // Auto-open the popup when there's exactly one match
   if (pts.length === 1) miniMarkers.getLayers()[0].openPopup();
 }
+
+// Tapping a result: if it has a location, jump straight to the Live Map on it;
+// otherwise (no GPS) fall back to the details popup.
+window.openResult = function(idx) {
+  const r = filtered[idx];
+  if (r && r.lat && r.lng && r.tab && r.row) {
+    window.location.href = `map.html?tab=${encodeURIComponent(r.tab)}&row=${r.row}`;
+  } else {
+    showDetails(idx);
+  }
+};
 
 window.showDetails = function(idx) {
   const r = filtered[idx];
