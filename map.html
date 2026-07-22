@@ -334,6 +334,7 @@ let userAccuracy = null;
 let watchId = null;
 let following = true;
 let programmaticMove = false;   // true while the app (not the user) is moving the map
+let firstFix = true;            // do a one-time zoom-to-user on the first GPS fix
 let layers = { apiary: null, hyper: null, swarm: null, hive: null };
 let visible = { apiary: true, hyper: true, swarm: true, hive: true };
 let registry = [];
@@ -615,8 +616,13 @@ function startLocationTracking() {
       userAccuracy = Math.round(pos.coords.accuracy);
       updateUserMarker();
       updateGpsStats();
-      // Auto-follow: gently pan to the user WITHOUT changing their zoom level
-      if (following && !placing) {
+      if (firstFix && userLat) {
+        // One-time: zoom in to the user when the map first loads
+        firstFix = false;
+        if (following && !placing) centerOnMe();
+      } else if (following && !placing && !map.getBounds().contains([userLat, userLng])) {
+        // Only recenter once you've actually driven off-screen — never while your
+        // location is still visible, so a GPS ping can't interrupt a pinch/zoom
         programmaticMove = true;
         map.panTo([userLat, userLng]);
       }
