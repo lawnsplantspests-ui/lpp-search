@@ -138,6 +138,7 @@ body.role-employee .leaflet-popup-content a[href^="mailto:"]{user-select:auto;-w
 .quick-item .qi-ic{font-size:16px}
 .quick-item.swarm{border-color:rgba(126,200,80,0.5)}
 .quick-item.hive{border-color:rgba(147,51,234,0.5)}
+.quick-item.check{border-color:rgba(58,141,222,0.5)}
 @keyframes qaIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
 /* Measure tool */
@@ -220,6 +221,7 @@ body.placing .layer-toggles,body.placing .county-filter,body.placing .stats-over
 <div class="quick-menu" id="quickMenu">
   <button class="quick-item swarm" onclick="quickAdd('swarm')"><span class="qi-ic">🍯</span> Log Swarm</button>
   <button class="quick-item hive" onclick="quickAdd('hive')"><span class="qi-ic">⬢</span> Mark Hive</button>
+  <button class="quick-item check" onclick="quickAdd('check')"><span class="qi-ic">🎯</span> Spot Check</button>
 </div>
 <button class="fab" id="fab" onclick="toggleQuickAdd()" aria-label="Quick add">+</button>
 
@@ -395,6 +397,11 @@ onAuthStateChanged(auth, async (user) => {
   await loadData();
   initMap();
   startLocationTracking();
+  // Try to send anything saved offline on a previous trip
+  if (getOutbox().length > 0) {
+    showToast(`📴 ${getOutbox().length} saved log${getOutbox().length > 1 ? 's' : ''} waiting to send…`);
+    flushOutbox();
+  }
 });
 
 async function loadData() {
@@ -425,6 +432,12 @@ async function loadData() {
     }
   } catch(e) {
     console.error('Load failed:', e);
+  }
+
+  // Re-add any unsent field logs so their pins stay visible until they send
+  for (const p of getOutbox()) {
+    if (p.action === 'addSwarm') swarms.unshift({ ...p });
+    if (p.action === 'addHive')  hives.unshift({ ...p });
   }
 }
 
@@ -457,6 +470,12 @@ function initMap() {
   if (cf) cf.value = savedCounty;
   
   renderAllLayers();
+
+  // Press-and-hold (or right-click) anywhere = spot check nearest bees/hypers
+  map.on('contextmenu', (e) => {
+    if (placing || measuring) return;
+    spotCheck(e.latlng.lat, e.latlng.lng);
+  });
 
   // Stop following when the USER pans or zooms (not when the app moves the map)
   map.on('dragstart', () => { if (following) toggleFollow(); });
@@ -798,42 +817,34 @@ window.saveSwarm = async function() {
     distanceFeet(lat, lng, r.lat, r.lng) <= 10560
   ).map(r => r.name).slice(0, 5);
   
-  try {
-    await fetch(SHEETS_API, {
-      method: 'POST',
-      mode: 'no-cors',
-      body: JSON.stringify({
-        action: 'addSwarm',
-        date: new Date().toISOString(),
-        address: addr,
-        lat: lat, lng: lng,
-        status: status,
-        notes: notes,
-        loggedBy: localUser.name || currentUser.email,
-        loggedByEmail: currentUser.email,
-        likelySource: nearby.join('; ')
-      })
-    });
-    
-    // Add to local list immediately (no-cors means we don't get response)
-    swarms.unshift({
-      date: new Date().toISOString(),
-      address: addr, lat: lat, lng: lng, status: status, notes: notes,
-      loggedBy: localUser.name || currentUser.email,
-      loggedByEmail: currentUser.email,
-      likelySource: nearby.join('; ')
-    });
-    localStorage.setItem('lpp_swarms', JSON.stringify(swarms));
-    renderAllLayers();
-    
-    closeSwarmDialog();
-    showToast('✓ Swarm logged');
-  } catch(e) {
-    alert('Failed to save: ' + e.message);
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = 'Save Swarm';
-  }
+  const payload = {
+    action: 'addSwarm',
+    date: new Date().toISOString(),
+    address: addr,
+    lat: lat, lng: lng,
+    status: status,
+    notes: notes,
+    loggedBy: localUser.name || currentUser.email,
+    loggedByEmail: currentUser.email,
+    likelySource: nearby.join('; ')
+  };
+  const ok = await postToSheet(payload);
+
+  // Add to local list immediately (no-cors means we don't get a response either way)
+  swarms.unshift({
+    date: payload.date,
+    address: addr, lat: lat, lng: lng, status: status, notes: notes,
+    loggedBy: payload.loggedBy,
+    loggedByEmail: payload.loggedByEmail,
+    likelySource: payload.likelySource
+  });
+  localStorage.setItem('lpp_swarms', JSON.stringify(swarms));
+  renderAllLayers();
+
+  closeSwarmDialog();
+  showToast(ok ? '✓ Swarm logged' : '📴 No signal — saved on phone, will auto-send');
+  btn.disabled = false;
+  btn.innerHTML = 'Save Swarm';
 };
 
 // ── Satellite base layer ───────────────────────────────
@@ -972,6 +983,10 @@ window.toggleQuickAdd = function() {
 window.quickAdd = function(kind) {
   toggleQuickAdd();
   if (kind === 'swarm') openSwarmDialog();
+  else if (kind === 'check') {
+    showToast('Tap any spot to check for nearby bees');
+    map.once('click', (e) => spotCheck(e.latlng.lat, e.latlng.lng));
+  }
   else startHivePlacement();
 };
 
@@ -1014,31 +1029,22 @@ window.saveMove = async function() {
   btn.disabled = true;
   btn.innerHTML = '<span class="btn-spinner"></span>Saving...';
 
-  try {
-    await fetch(SHEETS_API, {
-      method: 'POST',
-      mode: 'no-cors',
-      body: JSON.stringify({ action, id: editingMoveId, lat: ll.lat, lng: ll.lng, address: newAddr })
-    });
+  const ok = await postToSheet({ action, id: editingMoveId, lat: ll.lat, lng: ll.lng, address: newAddr });
 
-    // Update local copy immediately (no-cors gives no readable response)
-    const list = moveKind === 'hive' ? hives : swarms;
-    const rec = list.find(x => x.id === editingMoveId);
-    if (rec) { rec.lat = ll.lat; rec.lng = ll.lng; rec.address = newAddr; }
-    localStorage.setItem(moveKind === 'hive' ? 'lpp_hives' : 'lpp_swarms', JSON.stringify(list));
+  // Update local copy immediately (no-cors gives no readable response)
+  const list = moveKind === 'hive' ? hives : swarms;
+  const rec = list.find(x => x.id === editingMoveId);
+  if (rec) { rec.lat = ll.lat; rec.lng = ll.lng; rec.address = newAddr; }
+  localStorage.setItem(moveKind === 'hive' ? 'lpp_hives' : 'lpp_swarms', JSON.stringify(list));
 
-    moveKind = null;
-    editingMoveId = null;
-    editingMoveAddr = '';
-    teardownPlacement();
-    renderAllLayers();
-    showToast('✓ Location updated');
-  } catch(e) {
-    alert('Failed to save: ' + e.message);
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '✓ Save New Location';
-  }
+  moveKind = null;
+  editingMoveId = null;
+  editingMoveAddr = '';
+  teardownPlacement();
+  renderAllLayers();
+  showToast(ok ? '✓ Location updated' : '📴 No signal — saved on phone, will auto-send');
+  btn.disabled = false;
+  btn.innerHTML = '✓ Save New Location';
 };
 
 window.openHiveDetails = function() {
@@ -1082,32 +1088,106 @@ window.saveHive = async function() {
     county: county
   };
 
+  const ok = await postToSheet({ action: 'addHive', ...rec });
+
+  hives.unshift(rec);
+  localStorage.setItem('lpp_hives', JSON.stringify(hives));
+
+  // Tear down placement and render the real marker
+  if (placedMarker) { map.removeLayer(placedMarker); placedMarker = null; }
+  placing = false;
+  document.body.classList.remove('placing');
+  document.getElementById('placeBanner').classList.remove('show');
+  hidePlaceBar();
+  document.getElementById('hiveDialog').classList.remove('show');
+  toggleSatellite(satBeforePlacement);
+  renderAllLayers();
+  showToast(ok ? '✓ Hive marked' : '📴 No signal — saved on phone, will auto-send');
+  btn.disabled = false;
+  btn.innerHTML = 'Save Hive';
+};
+
+// ── Field-save protection (offline outbox) ─────────────
+// no-cors POSTs can silently fail in dead zones. Any save that can't reach
+// the Sheet is queued on the phone and auto-resent when signal returns.
+const OUTBOX_KEY = 'lpp_outbox';
+function getOutbox() { try { return JSON.parse(localStorage.getItem(OUTBOX_KEY) || '[]'); } catch(e) { return []; } }
+function setOutbox(q) { localStorage.setItem(OUTBOX_KEY, JSON.stringify(q)); }
+
+// Returns true if the POST went out, false if it was queued for later
+async function postToSheet(payload) {
+  if (!navigator.onLine) { queueOutbox(payload); return false; }
   try {
-    await fetch(SHEETS_API, {
-      method: 'POST',
-      mode: 'no-cors',
-      body: JSON.stringify({ action: 'addHive', ...rec })
-    });
-
-    hives.unshift(rec);
-    localStorage.setItem('lpp_hives', JSON.stringify(hives));
-
-    // Tear down placement and render the real marker
-    if (placedMarker) { map.removeLayer(placedMarker); placedMarker = null; }
-    placing = false;
-    document.body.classList.remove('placing');
-    document.getElementById('placeBanner').classList.remove('show');
-    hidePlaceBar();
-    document.getElementById('hiveDialog').classList.remove('show');
-    toggleSatellite(satBeforePlacement);
-    renderAllLayers();
-    showToast('✓ Hive marked');
+    await fetch(SHEETS_API, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
+    return true;
   } catch(e) {
-    alert('Failed to save: ' + e.message);
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = 'Save Hive';
+    queueOutbox(payload);
+    return false;
   }
+}
+
+function queueOutbox(payload) {
+  const q = getOutbox();
+  q.push(payload);
+  setOutbox(q);
+}
+
+async function flushOutbox() {
+  let q = getOutbox();
+  if (q.length === 0 || !navigator.onLine) return;
+  const remaining = [];
+  let sent = 0;
+  for (const p of q) {
+    try {
+      await fetch(SHEETS_API, { method: 'POST', mode: 'no-cors', body: JSON.stringify(p) });
+      sent++;
+    } catch(e) {
+      remaining.push(p);
+    }
+  }
+  setOutbox(remaining);
+  if (sent > 0) showToast(`✓ Sent ${sent} saved log${sent > 1 ? 's' : ''} from your phone`);
+}
+
+window.addEventListener('online', flushOutbox);
+
+// ── Spot check: nearest bees/hypers to any point ────────
+function nearestIn(arr, lat, lng) {
+  let best = null, bd = Infinity;
+  for (const r of arr) {
+    if (r.lat == null || r.lng == null || !r.lat) continue;
+    const d = distanceFeet(lat, lng, r.lat, r.lng);
+    if (d < bd) { bd = d; best = r; }
+  }
+  return best ? { rec: best, ft: bd } : null;
+}
+
+const TWO_MILES = 10560;
+
+window.spotCheck = function(lat, lng) {
+  const ap = nearestIn(registry.filter(r => r.type === 'Apiary'), lat, lng);
+  const hy = nearestIn(registry.filter(r => r.type === 'Hyper'), lat, lng);
+  const hv = nearestIn(hives, lat, lng);
+  const sw = nearestIn(swarms.filter(s => s.status === 'Active'), lat, lng);
+
+  const line = (icon, label, hit, dangerColor) => {
+    if (!hit) return `<div style="margin:3px 0;color:rgba(245,240,232,0.4);font-size:12px">${icon} ${label}: none on record</div>`;
+    const close = hit.ft <= TWO_MILES;
+    const color = close ? dangerColor : 'rgba(245,240,232,0.75)';
+    const name = escapeHtml(hit.rec.name || hit.rec.label || label);
+    return `<div style="margin:3px 0;font-size:12px;color:${color}">${icon} ${label}: <b>${name}</b> — <b>${fmtMeasure(hit.ft)}</b>${close ? ' ⚠️' : ''}</div>`;
+  };
+
+  const html = `<b>🎯 Spot Check</b><br>
+    <span style="font-size:10px;color:rgba(245,240,232,0.45)">${lat.toFixed(5)}, ${lng.toFixed(5)} · ⚠️ = within 2 miles</span>
+    <div style="margin-top:6px">
+      ${line('🐝', 'Apiary', ap, '#e8a020')}
+      ${line('⚠️', 'Hyper', hy, '#e74c3c')}
+      ${line('⬢', 'Unreg. hive', hv, '#c084fc')}
+      ${line('🍯', 'Active swarm', sw, '#7ec850')}
+    </div>`;
+
+  L.popup({ maxWidth: 280 }).setLatLng([lat, lng]).setContent(html).openOn(map);
 };
 
 // ── Measure tool ───────────────────────────────────────
