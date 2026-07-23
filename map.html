@@ -358,6 +358,7 @@ let watchId = null;
 let following = true;
 let programmaticMove = false;   // true while the app (not the user) is moving the map
 let firstFix = true;            // do a one-time zoom-to-user on the first GPS fix
+let activeTouches = 0;          // fingers currently on the map — never auto-move while > 0
 let layers = { apiary: null, hyper: null, swarm: null, hive: null };
 let visible = { apiary: true, hyper: true, swarm: true, hive: true };
 let registry = [];
@@ -470,6 +471,12 @@ function initMap() {
   if (cf) cf.value = savedCounty;
   
   renderAllLayers();
+
+  // Track fingers on the map so GPS auto-recenter can never interrupt a gesture
+  const mc = map.getContainer();
+  mc.addEventListener('touchstart',  (e) => { activeTouches = e.touches.length; }, { passive: true });
+  mc.addEventListener('touchend',    (e) => { activeTouches = e.touches.length; }, { passive: true });
+  mc.addEventListener('touchcancel', (e) => { activeTouches = e.touches.length; }, { passive: true });
 
   // Press-and-hold (or right-click) anywhere = spot check nearest bees/hypers
   map.on('contextmenu', (e) => {
@@ -666,9 +673,10 @@ function startLocationTracking() {
         // One-time: zoom in to the user when the map first loads
         firstFix = false;
         if (following && !placing) centerOnMe();
-      } else if (following && !placing && !map.getBounds().contains([userLat, userLng])) {
-        // Only recenter once you've actually driven off-screen — never while your
-        // location is still visible, so a GPS ping can't interrupt a pinch/zoom
+      } else if (following && !placing && !measuring && activeTouches === 0 &&
+                 !map.getBounds().contains([userLat, userLng])) {
+        // Only recenter once you've actually driven off-screen — and NEVER while
+        // a finger is on the map or a tool is open, so nothing interrupts a gesture
         programmaticMove = true;
         map.panTo([userLat, userLng]);
       }
@@ -681,14 +689,21 @@ function startLocationTracking() {
 }
 
 function updateUserMarker() {
-  if (userMarker) map.removeLayer(userMarker);
-  const icon = L.divIcon({
-    className: 'user-marker',
-    html: '<div class="user-dot"></div>',
-    iconSize: [22, 22], iconAnchor: [11, 11]
-  });
-  userMarker = L.marker([userLat, userLng], { icon, zIndexOffset: 1000 }).addTo(map);
-  userMarker.bindPopup(`<b>📍 Your Location</b><br>${userLat.toFixed(6)}, ${userLng.toFixed(6)}<br>±${userAccuracy}ft accuracy`);
+  // Create the dot ONCE and move it afterwards. Recreating it every GPS ping
+  // deleted the element mid-gesture and made scrolling go haywire.
+  const popupHtml = `<b>📍 Your Location</b><br>${userLat.toFixed(6)}, ${userLng.toFixed(6)}<br>±${userAccuracy}ft accuracy`;
+  if (!userMarker) {
+    const icon = L.divIcon({
+      className: 'user-marker',
+      html: '<div class="user-dot"></div>',
+      iconSize: [22, 22], iconAnchor: [11, 11]
+    });
+    userMarker = L.marker([userLat, userLng], { icon, zIndexOffset: 1000 }).addTo(map);
+    userMarker.bindPopup(popupHtml);
+  } else {
+    userMarker.setLatLng([userLat, userLng]);
+    userMarker.setPopupContent(popupHtml);
+  }
 }
 
 function updateGpsStats() {
