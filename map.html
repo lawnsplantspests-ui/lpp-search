@@ -580,9 +580,12 @@ function renderAllLayers() {
 function makeMarker(lat, lng, type, data) {
   const colors = { apiary: '#e8a020', hyper: '#c0392b', swarm: '#7ec850', hive: '#9333ea' };
   const icons  = { apiary: '🐝', hyper: '!', swarm: '🍯', hive: '⬢' };
+  // Finished swarms/hives (Retrieved/Removed/Gone) show dimmed so the map
+  // reads what's actually active at a glance
+  const dim = (type === 'swarm' || type === 'hive') && data.status && data.status !== 'Active';
   const icon = L.divIcon({
     className: 'custom-pin',
-    html: `<div style="background:${colors[type]};width:26px;height:26px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;font-weight:700">${icons[type]}</div>`,
+    html: `<div style="background:${colors[type]};width:26px;height:26px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;font-weight:700;opacity:${dim ? 0.45 : 1}">${icons[type]}</div>`,
     iconSize: [26, 26], iconAnchor: [13, 13]
   });
   const marker = L.marker([lat, lng], { icon });
@@ -616,12 +619,22 @@ function buildPopup(type, d) {
     const moveLink = (isAdmin && d.id)
       ? `<br><a href="#" onclick="startSwarmMove(${d.id});return false;" style="display:inline-block;margin-top:6px;font-size:11px;color:#7ec850;text-decoration:none;padding:3px 8px;border:1px solid rgba(126,200,80,0.4);border-radius:6px">🗺️ Move / Fix Location</a>`
       : '';
+    // One-tap status updates (any logged-in user — the crew closes out swarms)
+    let statusBtns = '';
+    if (d.id) {
+      const sb = (label, s, color) => `<a href="#" onclick="setSwarmStatus(${d.id},'${s}');return false;" style="display:inline-block;font-size:11px;color:${color};text-decoration:none;padding:3px 8px;border:1px solid ${color};border-radius:6px;opacity:0.9">${label}</a>`;
+      const opts = [];
+      if (d.status !== 'Retrieved') opts.push(sb('✅ Retrieved', 'Retrieved', '#5ba8e8'));
+      if (d.status !== 'Gone')      opts.push(sb('⚪ Gone', 'Gone', '#9aa89e'));
+      if (d.status !== 'Active')    opts.push(sb('🟢 Active', 'Active', '#7ec850'));
+      statusBtns = `<div style="margin-top:7px;display:flex;gap:6px;flex-wrap:wrap">${opts.join('')}</div>`;
+    }
     return `<b>🍯 Swarm</b><br>
       📅 ${date}<br>
       📍 ${escapeHtml(d.address || 'GPS only')}<br>
       <span style="color:${statusColor}">● ${d.status}</span>
       ${d.notes ? `<br><i style="color:rgba(245,240,232,0.7);font-size:12px">"${escapeHtml(d.notes)}"</i>` : ''}
-      <br><span style="font-size:10px;color:rgba(245,240,232,0.4)">Logged by ${escapeHtml(d.loggedBy)}</span>${moveLink}
+      <br><span style="font-size:10px;color:rgba(245,240,232,0.4)">Logged by ${escapeHtml(d.loggedBy)}</span>${statusBtns}${moveLink}
       ${sourcesHtml}`;
   }
 
@@ -631,13 +644,22 @@ function buildPopup(type, d) {
     const moveLink = (isAdmin && d.id)
       ? `<br><a href="#" onclick="startHiveMove(${d.id});return false;" style="display:inline-block;margin-top:6px;font-size:11px;color:#c084fc;text-decoration:none;padding:3px 8px;border:1px solid rgba(147,51,234,0.4);border-radius:6px">🗺️ Move / Fix Location</a>`
       : '';
+    let statusBtns = '';
+    if (d.id) {
+      const sb = (label, s, color) => `<a href="#" onclick="setHiveStatus(${d.id},'${s}');return false;" style="display:inline-block;font-size:11px;color:${color};text-decoration:none;padding:3px 8px;border:1px solid ${color};border-radius:6px;opacity:0.9">${label}</a>`;
+      const opts = [];
+      if (d.status !== 'Removed') opts.push(sb('✅ Removed', 'Removed', '#5ba8e8'));
+      if (d.status !== 'Gone')    opts.push(sb('⚪ Gone', 'Gone', '#9aa89e'));
+      if (d.status !== 'Active')  opts.push(sb('🟢 Active', 'Active', '#7ec850'));
+      statusBtns = `<div style="margin-top:7px;display:flex;gap:6px;flex-wrap:wrap">${opts.join('')}</div>`;
+    }
     return `<b style="color:#c084fc">⬢ Unregistered Hive</b><br>
       ${d.label ? `<b style="font-size:14px;color:#c084fc">${escapeHtml(d.label)}</b><br>` : ''}
       📅 ${date}<br>
       📍 ${d.lat.toFixed(6)}, ${d.lng.toFixed(6)}<br>
       <span style="color:${statusColor}">● ${escapeHtml(d.status || '')}</span>
       ${d.notes ? `<br><i style="color:rgba(245,240,232,0.7);font-size:12px">"${escapeHtml(d.notes)}"</i>` : ''}
-      <br><span style="font-size:10px;color:rgba(245,240,232,0.4)">Marked by ${escapeHtml(d.loggedBy || '')}</span>${moveLink}`;
+      <br><span style="font-size:10px;color:rgba(245,240,232,0.4)">Marked by ${escapeHtml(d.loggedBy || '')}</span>${statusBtns}${moveLink}`;
   }
 
   const phones = [d.phoneDay, d.phoneNight, d.phoneAlt].filter(p => p);
@@ -1121,6 +1143,21 @@ window.saveHive = async function() {
   btn.disabled = false;
   btn.innerHTML = 'Save Hive';
 };
+
+// ── One-tap status updates from pin popups ─────────────
+async function setRecStatus(kind, id, status) {
+  const list = kind === 'swarm' ? swarms : hives;
+  const rec = list.find(x => x.id === id);
+  if (!rec) { showToast('Record not found'); return; }
+  map.closePopup();
+  rec.status = status;
+  localStorage.setItem(kind === 'swarm' ? 'lpp_swarms' : 'lpp_hives', JSON.stringify(list));
+  renderAllLayers();
+  const ok = await postToSheet({ action: kind === 'swarm' ? 'updateSwarm' : 'updateHive', id: id, status: status });
+  showToast(ok ? `✓ Marked ${status}` : '📴 No signal — saved on phone, will auto-send');
+}
+window.setSwarmStatus = function(id, status) { setRecStatus('swarm', id, status); };
+window.setHiveStatus  = function(id, status) { setRecStatus('hive', id, status); };
 
 // ── Field-save protection (offline outbox) ─────────────
 // no-cors POSTs can silently fail in dead zones. Any save that can't reach
