@@ -40,6 +40,9 @@ input::placeholder{color:rgba(245,240,232,0.25)}
 /* Results */
 .result-banner{padding:18px 20px;border-radius:14px;margin-bottom:14px;display:flex;align-items:center;gap:14px;animation:slideIn 0.4s ease both}
 @keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.coverage-note{background:rgba(232,160,32,0.1);border:1px solid rgba(232,160,32,0.35);border-radius:11px;padding:11px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.5;color:var(--amber)}
+.coverage-note .cov-fix{display:block;margin-top:5px;font-size:11px;color:rgba(245,240,232,0.55)}
+.coverage-ok{font-size:11px;color:rgba(126,200,80,0.75);margin-bottom:12px;padding:0 2px;letter-spacing:0.2px}
 .result-banner.clear{background:rgba(126,200,80,0.1);border:1px solid rgba(126,200,80,0.3)}
 .result-banner.warning{background:rgba(232,160,32,0.12);border:1px solid rgba(232,160,32,0.35)}
 .result-banner.danger{background:rgba(192,57,43,0.12);border:1px solid rgba(192,57,43,0.4)}
@@ -238,6 +241,8 @@ onAuthStateChanged(auth, async (user) => {
   const localUser = JSON.parse(localStorage.getItem('lpp_user') || '{}');
   document.body.classList.add('role-' + (localUser.role || 'employee'));
   loadRegistry();
+  // Send anything that was saved offline on a previous trip
+  if (getOutbox().length > 0) flushOutbox();
 });
 
 // ── Load registry ───────────────────────────────────────
@@ -282,6 +287,42 @@ function showMain() {
   document.getElementById('statsBar').innerHTML = 
     `<span>${a} Apiaries</span><span>${h} Hypers</span><span>${registry.length} Total</span>`;
 }
+
+// ── Field-save protection (offline outbox) ─────────────
+// Shares the 'lpp_outbox' queue with map.html — whichever page opens next
+// in signal sends anything that failed in a dead zone.
+const OUTBOX_KEY = 'lpp_outbox';
+function getOutbox() { try { return JSON.parse(localStorage.getItem(OUTBOX_KEY) || '[]'); } catch(e) { return []; } }
+function setOutbox(q) { localStorage.setItem(OUTBOX_KEY, JSON.stringify(q)); }
+
+// Returns true if the POST went out, false if it was queued for later
+async function postToSheet(payload) {
+  if (!navigator.onLine) { const q = getOutbox(); q.push(payload); setOutbox(q); return false; }
+  try {
+    await fetch(SHEETS_API, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
+    return true;
+  } catch(e) {
+    const q = getOutbox(); q.push(payload); setOutbox(q);
+    return false;
+  }
+}
+
+async function flushOutbox() {
+  const q = getOutbox();
+  if (q.length === 0 || !navigator.onLine) return;
+  const remaining = [];
+  let sent = 0;
+  for (const p of q) {
+    try {
+      await fetch(SHEETS_API, { method: 'POST', mode: 'no-cors', body: JSON.stringify(p) });
+      sent++;
+    } catch(e) { remaining.push(p); }
+  }
+  setOutbox(remaining);
+  if (sent > 0) showToast(`✓ Sent ${sent} saved log${sent > 1 ? 's' : ''} from your phone`);
+}
+
+window.addEventListener('online', flushOutbox);
 
 // ── Geocoding ───────────────────────────────────────────
 async function geocode(address) {
@@ -369,17 +410,13 @@ window.runSearch = async function() {
       }
     }
     
-    if (skippedNoCoords > 0) {
-      console.warn(skippedNoCoords + ' records skipped (no GPS). Run Admin → Geocode Registry to fix.');
-    }
-    
     // Sort: hypers first, then by distance
     nearby.sort((a, b) => {
       if (a.type !== b.type) return a.type === 'Hyper' ? -1 : 1;
       return a.distance - b.distance;
     });
     
-    displayResults(address, point, nearby);
+    displayResults(address, point, nearby, skippedNoCoords);
     
     // Log the search
     logSearchToSheet(address, point, nearby);
@@ -393,19 +430,21 @@ window.runSearch = async function() {
   }
 };
 
-function displayResults(address, point, nearby) {
+function displayResults(address, point, nearby, skippedNoCoords) {
   const resultArea = document.getElementById('resultArea');
   const hypers = nearby.filter(r => r.type === 'Hyper');
   const apiaries = nearby.filter(r => r.type === 'Apiary');
-  
+  const skipped = skippedNoCoords || 0;
+  const checked = registry.length - skipped;
+
   let html = '';
-  
+
   // Banner
   if (nearby.length === 0) {
     html += `<div class="result-banner clear">
       <div class="result-icon">✓</div>
       <div class="result-text">
-        <h3>All Clear — Safe to Treat</h3>
+        <h3>${skipped > 0 ? 'Clear — With One Caveat' : 'All Clear — Safe to Treat'}</h3>
         <p>No hypersensitive individuals or apiaries within 500ft</p>
       </div>
     </div>`;
@@ -427,6 +466,18 @@ function displayResults(address, point, nearby) {
     </div>`;
   }
   
+  // Coverage note — never let a clear result hide records we couldn't check
+  if (skipped > 0) {
+    html += `<div class="coverage-note">
+      <b>⚠️ ${skipped} record${skipped === 1 ? '' : 's'} could not be checked</b> — no GPS location on file, so
+      ${skipped === 1 ? 'it was' : 'they were'} left out of this search.
+      Checked ${checked.toLocaleString()} of ${registry.length.toLocaleString()}.
+      <span class="cov-fix">Fix: Admin → Re-geocode with US Census → "Missing/Low"</span>
+    </div>`;
+  } else {
+    html += `<div class="coverage-ok">✓ All ${registry.length.toLocaleString()} records checked — every one has a GPS location</div>`;
+  }
+
   // Map
   html += '<div id="map" class="show"></div>';
   
@@ -535,23 +586,19 @@ window.saveContactLog = async function() {
   const localUser = JSON.parse(localStorage.getItem('lpp_user') || '{}');
   
   try {
-    await fetch(SHEETS_API, {
-      method: 'POST',
-      mode: 'no-cors',
-      body: JSON.stringify({
-        action: 'logContact',
-        contactType: currentContact.type,
-        userEmail: currentUser.email,
-        userName: localUser.name || currentUser.email,
-        contactName: currentContact.name,
-        contactAddress: currentContact.address,
-        phoneCalled: phone,
-        note: note,
-        searchedAddress: document.getElementById('addressInput').value.trim()
-      })
+    const ok = await postToSheet({
+      action: 'logContact',
+      contactType: currentContact.type,
+      userEmail: currentUser.email,
+      userName: localUser.name || currentUser.email,
+      contactName: currentContact.name,
+      contactAddress: currentContact.address,
+      phoneCalled: phone,
+      note: note,
+      searchedAddress: document.getElementById('addressInput').value.trim()
     });
     closeDialog();
-    showToast('✓ Contact logged');
+    showToast(ok ? '✓ Contact logged' : '📴 No signal — saved on phone, will auto-send');
   } catch(e) {
     alert('Failed to save: ' + e.message);
   } finally {
@@ -595,28 +642,24 @@ window.saveSwarm = async function() {
   ).map(r => r.name).slice(0, 5);
   
   try {
-    await fetch(SHEETS_API, {
-      method: 'POST',
-      mode: 'no-cors',
-      body: JSON.stringify({
-        action: 'addSwarm',
-        date: new Date().toISOString(),
-        address: address,
-        lat: currentSearchPoint.lat,
-        lng: currentSearchPoint.lng,
-        status: status,
-        notes: notes,
-        loggedBy: localUser.name || currentUser.email,
-        loggedByEmail: currentUser.email,
-        likelySource: nearby.join('; ')
-      })
+    const ok = await postToSheet({
+      action: 'addSwarm',
+      date: new Date().toISOString(),
+      address: address,
+      lat: currentSearchPoint.lat,
+      lng: currentSearchPoint.lng,
+      status: status,
+      notes: notes,
+      loggedBy: localUser.name || currentUser.email,
+      loggedByEmail: currentUser.email,
+      likelySource: nearby.join('; ')
     });
-    
+
     // Clear local swarms cache so map.html refreshes
     localStorage.removeItem('lpp_swarms');
-    
+
     closeSwarmDialog();
-    showToast('✓ Swarm logged');
+    showToast(ok ? '✓ Swarm logged' : '📴 No signal — saved on phone, will auto-send');
   } catch(e) {
     alert('Failed to save: ' + e.message);
   } finally {
@@ -640,19 +683,15 @@ function logSearchToSheet(address, point, nearby) {
   if (hypers > 0) result = `${hypers} hyper${hypers>1?'s':''}, ${apiaries} apiary${apiaries===1?'':'ies'}`;
   else if (apiaries > 0) result = `${apiaries} apiary${apiaries===1?'':'ies'}`;
   
-  fetch(SHEETS_API, {
-    method: 'POST',
-    mode: 'no-cors',
-    body: JSON.stringify({
-      action: 'logSearch',
-      userEmail: currentUser.email,
-      userName: localUser.name || currentUser.email,
-      address: address,
-      lat: point.lat, lng: point.lng,
-      hyperCount: hypers, apiaryCount: apiaries,
-      result: result
-    })
-  }).catch(()=>{});
+  postToSheet({
+    action: 'logSearch',
+    userEmail: currentUser.email,
+    userName: localUser.name || currentUser.email,
+    address: address,
+    lat: point.lat, lng: point.lng,
+    hyperCount: hypers, apiaryCount: apiaries,
+    result: result
+  });
 }
 
 // Allow Enter to search
