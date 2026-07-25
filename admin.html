@@ -104,14 +104,9 @@ input::placeholder{color:rgba(245,240,232,0.25)}
 .fix-body{flex:1;min-width:0}
 .fix-title{font-size:13.5px;font-weight:700;line-height:1.3;margin-bottom:3px}
 .fix-desc{font-size:11.5px;line-height:1.45;color:rgba(245,240,232,0.55)}
-.retired{margin-top:12px;border:1px solid rgba(245,240,232,0.1);border-radius:10px;background:rgba(0,0,0,0.2)}
-.retired summary{padding:10px 13px;font-size:12px;font-weight:600;color:rgba(245,240,232,0.45);cursor:pointer;list-style:none}
-.retired summary::-webkit-details-marker{display:none}
-.retired summary::before{content:"▸ ";color:rgba(245,240,232,0.35)}
-.retired[open] summary::before{content:"▾ "}
-.retired-body{padding:0 13px 12px;font-size:11.5px;line-height:1.5;color:rgba(245,240,232,0.5)}
-.retired-body p{margin-bottom:8px}
-.retired-body b{color:rgba(245,240,232,0.7)}
+.fix-count{border-radius:10px;padding:11px 13px;margin-bottom:6px;font-size:12.5px;line-height:1.5;background:rgba(0,0,0,0.25);border:1px solid rgba(245,240,232,0.1);color:rgba(245,240,232,0.6)}
+.fix-count.warn{background:rgba(232,160,32,0.1);border-color:rgba(232,160,32,0.35);color:var(--amber)}
+.fix-count.ok{background:rgba(126,200,80,0.08);border-color:rgba(126,200,80,0.3);color:var(--lime)}
 
 .hidden{display:none!important}
 
@@ -220,52 +215,35 @@ input::placeholder{color:rgba(245,240,232,0.25)}
       <!-- LOCATION FIXES — one clear path per job -->
       <div class="section-card">
         <div class="section-title">📍 Fix Locations</div>
-        <div class="info-box" style="margin-bottom:14px">
-          Pick the job you need. <b>Start at the top</b> — the first one fixes
-          almost everything automatically.
-        </div>
+
+        <div class="fix-count" id="fixCount">Checking how many records need a location…</div>
 
         <div class="fix-step">
           <div class="fix-num">1</div>
           <div class="fix-body">
-            <div class="fix-title">Missing or bad pins — fix them all at once</div>
-            <div class="fix-desc">Looks up every address that has no GPS (or a poor one) and fills it in automatically. This is the one you want almost every time. Safe to re-run.</div>
-            <a href="recensus.html" class="btn" style="display:block;text-align:center;text-decoration:none;margin-top:9px">🇺🇸 Auto-Fix Locations (US Census)</a>
+            <div class="fix-title">Auto-fix what it can</div>
+            <div class="fix-desc">Looks up every address with no GPS and fills in what it can find. Run this first — it's safe to re-run anytime.</div>
+            <a href="recensus.html" class="btn" style="display:block;text-align:center;text-decoration:none;margin-top:9px">🇺🇸 Auto-Fix Locations</a>
           </div>
         </div>
 
         <div class="fix-step">
           <div class="fix-num">2</div>
           <div class="fix-body">
-            <div class="fix-title">One pin is in the wrong spot</div>
-            <div class="fix-desc">Search for that record by name and drag its pin to the right place.</div>
-            <a href="edit.html" class="btn btn-secondary" style="display:block;text-align:center;text-decoration:none;margin-top:9px">✏️ Fix One Address</a>
+            <div class="fix-title">Pin the leftovers by hand</div>
+            <div class="fix-desc">Auto-fix can't find every rural address — back lanes and new builds often aren't in any address database. Whatever it misses lands here, and you drop the pin yourself.</div>
+            <a href="edit.html?tab=failed" class="btn btn-secondary" style="display:block;text-align:center;text-decoration:none;margin-top:9px">📍 Pin Missing Locations</a>
           </div>
         </div>
 
         <div class="fix-step">
           <div class="fix-num">3</div>
           <div class="fix-body">
-            <div class="fix-title">Double-check pins one by one</div>
-            <div class="fix-desc">Walks you through records that haven't been confirmed yet, one at a time, so you can approve or correct each.</div>
-            <a href="verify.html" class="btn btn-secondary" style="display:block;text-align:center;text-decoration:none;margin-top:9px">✅ Review Unconfirmed Pins</a>
+            <div class="fix-title">A pin is in the wrong place</div>
+            <div class="fix-desc">Search that record by name and drag its pin where it belongs.</div>
+            <a href="edit.html" class="btn btn-secondary" style="display:block;text-align:center;text-decoration:none;margin-top:9px">✏️ Fix One Address</a>
           </div>
         </div>
-
-        <details class="retired">
-          <summary>Retired tools (don't use these)</summary>
-          <div class="retired-body">
-            <p><b>🎯 Restore Original GPS Points</b> — a one-time repair that was
-            already run in June 2026. Running it again would overwrite newer
-            corrections with old saved coordinates. Leave it alone.</p>
-            <p><b>🌐 Geocode Registry (OSM)</b> — the old address lookup,
-            replaced by the US Census one above, which is more accurate for
-            rural PA. No reason to use it.</p>
-            <p style="opacity:0.6;margin-top:8px">If you ever truly need them:
-            <a href="restore-gps.html" style="color:rgba(245,240,232,0.5)">restore-gps</a> ·
-            <a href="geocode.html" style="color:rgba(245,240,232,0.5)">osm-geocode</a></p>
-          </div>
-        </details>
       </div>
 
       <div class="section-card">
@@ -328,7 +306,33 @@ onAuthStateChanged(auth, async (user) => {
   document.getElementById('mainContent').classList.remove('hidden');
   loadUsers();
   loadSyncStatus();
+  loadFixCount();
 });
+
+// How many records still have no location? Drives the Fix Locations card.
+async function loadFixCount() {
+  const el = document.getElementById('fixCount');
+  if (!el) return;
+  try {
+    const res = await fetch(SHEETS_API + '?action=getRegistry');
+    const data = await res.json();
+    const records = data.records || [];
+    const missing = records.filter(r => !r.lat || !r.lng);
+    if (missing.length === 0) {
+      el.className = 'fix-count ok';
+      el.innerHTML = `✓ Every one of the ${records.length.toLocaleString()} records has a location. Nothing to fix.`;
+      return;
+    }
+    const hypers = missing.filter(r => r.type === 'Hyper').length;
+    el.className = 'fix-count warn';
+    el.innerHTML = `<b>${missing.length} record${missing.length === 1 ? '' : 's'} still have no location</b>` +
+      (hypers > 0 ? ` — including <b>${hypers} hypersensitive</b>` : '') +
+      `. Until they're pinned, they're invisible to the address search.`;
+  } catch(e) {
+    el.className = 'fix-count';
+    el.textContent = 'Could not check how many records need a location.';
+  }
+}
 
 window.showPanel = function(panel) {
   ['users','activity','sync','import'].forEach(p => {

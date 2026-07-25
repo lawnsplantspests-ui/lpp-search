@@ -1,0 +1,475 @@
+{
+  "note": "Snapshot of PA Plants \"GPS Point\" coordinates as restored in June 2026. Reference/archive only - these are the registrant-supplied exact coords, the most accurate locations on file. Extracted from the retired restore-gps.html tool. Do NOT bulk-apply these without checking whether newer corrections exist.",
+  "captured": "2026-06",
+  "count": 78,
+  "records": [
+    {
+      "name": "Dickinson College",
+      "address_prefix": "100-198 North College Street, Carlisle, PA 17013",
+      "lat": 40.20477259900015,
+      "lng": -77.19637870788574
+    },
+    {
+      "name": "Fickes, Scott E",
+      "address_prefix": "525 S Bedford St, Carlisle, PA 17013-3902",
+      "lat": 40.194547,
+      "lng": -77.18729300000001
+    },
+    {
+      "name": "Beidel, Jay",
+      "address_prefix": "1720 Walnut Bottom Road, Carlisle, PA 17015",
+      "lat": 40.166346,
+      "lng": -77.23519899999997
+    },
+    {
+      "name": "Brubaker, James",
+      "address_prefix": "1011-1041 Myerstown Road, Gardners, PA 17324",
+      "lat": 40.04848,
+      "lng": -77.18962999999997
+    },
+    {
+      "name": "Daniels, Jonathan",
+      "address_prefix": "210 Frost Road, Gardners, PA 17324",
+      "lat": 40.0556,
+      "lng": -77.1823
+    },
+    {
+      "name": "Zelger, Rudolph",
+      "address_prefix": "18 N Dickinson School Rd, Carlisle, PA 17015",
+      "lat": 40.26538,
+      "lng": -77.26532
+    },
+    {
+      "name": "Lehman, Thomas E",
+      "address_prefix": "2215 Lambs Gap Rd, Enola, PA 17025",
+      "lat": 40.29278,
+      "lng": -77.00554999999997
+    },
+    {
+      "name": "Houck, David",
+      "address_prefix": "147 Ewe Road, Mechanicsburg, PA 17055",
+      "lat": 40.203552,
+      "lng": -76.93384300000002
+    },
+    {
+      "name": "Jones, Thomas",
+      "address_prefix": "230 Horsehoe Road, Carlisle, PA 17015",
+      "lat": 40.2568,
+      "lng": -77.28546
+    },
+    {
+      "name": "Brubaker, James",
+      "address_prefix": "433-449 Sherwood Drive, Carlisle, PA 17015",
+      "lat": 40.27179,
+      "lng": -77.12335000000002
+    },
+    {
+      "name": "Brubaker, James",
+      "address_prefix": "7722 Wertzville Road, Carlisle, PA 17013",
+      "lat": 40.28285,
+      "lng": -77.13932999999997
+    },
+    {
+      "name": "Shirey, Wilbur",
+      "address_prefix": "241 N Middlesex Rd, Carlisle, PA 17013",
+      "lat": 40.25741,
+      "lng": -77.12768
+    },
+    {
+      "name": "Walker, John R",
+      "address_prefix": "Country Club Road, Carlisle, PA 17015",
+      "lat": 40.22170340837315,
+      "lng": -77.33413738281251
+    },
+    {
+      "name": "Hildebrand, Greg",
+      "address_prefix": "126 South Locust Point Rd, Mechanicsburg, PA 17055",
+      "lat": 40.18658447265625,
+      "lng": -77.05750582746887
+    },
+    {
+      "name": "Roccasecca, James",
+      "address_prefix": "Creek Road, Mechanicsburg, PA 17055",
+      "lat": 40.144792,
+      "lng": -77.071027
+    },
+    {
+      "name": "Hopler, Joan",
+      "address_prefix": "920 Cranes Gap Rd, Carlisle, PA 17013",
+      "lat": 40.265229,
+      "lng": -77.19264099999998
+    },
+    {
+      "name": "Jones, Thomas",
+      "address_prefix": "2100 Enola Rd, Carlisle, PA 17015",
+      "lat": 40.26956,
+      "lng": -77.24254000000002
+    },
+    {
+      "name": "Frantz, Clare",
+      "address_prefix": "Silver Spring Township",
+      "lat": 40.22438920325037,
+      "lng": -77.07423623829453
+    },
+    {
+      "name": "Daniels, Jonathan",
+      "address_prefix": "Sigmans Trailer Court, 57 Lindsay Lane, Carlisle, PA 17013",
+      "lat": 40.1757,
+      "lng": -77.19010000000003
+    },
+    {
+      "name": "Daniels, Jonathan",
+      "address_prefix": "816 Holly Pike, Mount Hollly Springs, PA 17065",
+      "lat": 40.131522,
+      "lng": -77.19249100000002
+    },
+    {
+      "name": "Hildebrand, Greg",
+      "address_prefix": "Grantham Rd, Mechanicsburg, PA 17055",
+      "lat": 40.1585064,
+      "lng": -76.9909503
+    },
+    {
+      "name": "Paulus, Creedin",
+      "address_prefix": "1216 S York St, Mechanicsburg, PA 17050",
+      "lat": 40.19588,
+      "lng": -77.00209999999998
+    },
+    {
+      "name": "Brubaker, James",
+      "address_prefix": "24 Oak Bend Road, Newburg, PA 17240",
+      "lat": 40.1975,
+      "lng": -77.51679999999999
+    },
+    {
+      "name": "Brubaker, James",
+      "address_prefix": "Pennsylvania Turnpike, West Pennsboro, PA 17015",
+      "lat": 40.20311,
+      "lng": -77.32844999999998
+    },
+    {
+      "name": "Wolf, Russell",
+      "address_prefix": "424 Kerrsville Rd, Carlisle, PA 17015",
+      "lat": 40.1658,
+      "lng": -77.31720999999999
+    },
+    {
+      "name": "Wieland, Ray, IV",
+      "address_prefix": "1169 Paige Hill Road, New Bloomfield, PA 17068",
+      "lat": 40.37324,
+      "lng": -77.2021
+    },
+    {
+      "name": "Ney, Richard R, Jr",
+      "address_prefix": "227 Huckleberry Road, New Bloomfield, PA 17068",
+      "lat": 40.40211,
+      "lng": -77.17811
+    },
+    {
+      "name": "c/o Joseph Pegnetter, Perry County Bee Company LLC",
+      "address_prefix": "30247 Couchtown Road, Blain, PA 17006",
+      "lat": 40.319532,
+      "lng": -77.474569
+    },
+    {
+      "name": "Albright, Perry",
+      "address_prefix": "Juniata Township, PA",
+      "lat": 40.4438,
+      "lng": -77.2566
+    },
+    {
+      "name": "Anderson, Kevin",
+      "address_prefix": "6421 Middle Ridge Road, Newport, PA 17074",
+      "lat": 40.44779,
+      "lng": -77.24274000000003
+    },
+    {
+      "name": "Sansone, Shane",
+      "address_prefix": "5660 Middle Ridge Rd, Newport, PA 17074",
+      "lat": 40.452611,
+      "lng": -77.22790099999997
+    },
+    {
+      "name": "Kistler, John",
+      "address_prefix": "22 Front Street, New Buffalo, PA 17069",
+      "lat": 40.453859099999995,
+      "lng": -76.96855920000002
+    },
+    {
+      "name": "Toothaker, William M",
+      "address_prefix": "100 Old Mill Road, Shermansdale, PA 17319",
+      "lat": 40.1495266102659,
+      "lng": -76.7479831366117
+    },
+    {
+      "name": "Hiddemen, G Mitch",
+      "address_prefix": "Penn Township, PA",
+      "lat": 40.35145,
+      "lng": -77.04839
+    },
+    {
+      "name": "Lindgren, Cllifford",
+      "address_prefix": "315 Faculty Rd, Duncannon, PA 17020",
+      "lat": 40.392666,
+      "lng": -77.06961799999999
+    },
+    {
+      "name": "Jent, Bill And Cheryl",
+      "address_prefix": "238 Pine Hill Road, Landisburg, PA 17040",
+      "lat": 40.31496,
+      "lng": -77.27408000000003
+    },
+    {
+      "name": "Wieland, Ray, IV",
+      "address_prefix": "605 - 699 Indiana Rd, Landisburg, PA 17040",
+      "lat": 40.36867,
+      "lng": -77.25148
+    },
+    {
+      "name": "Martin, Franklin",
+      "address_prefix": "1835 New Bloomfield Road, New Bloomfield, PA 17068",
+      "lat": 40.39076,
+      "lng": -77.13794000000001
+    },
+    {
+      "name": "Nacko, Diane",
+      "address_prefix": "2 Grandview Drive, Duncannon, PA 17020",
+      "lat": 40.376447,
+      "lng": -77.11270999999999
+    },
+    {
+      "name": "Heller, Wayne",
+      "address_prefix": "263 Morrissey Dr, Lebanon, PA 17046",
+      "lat": 40.39325,
+      "lng": -76.39418
+    },
+    {
+      "name": "Keller, Timothy L",
+      "address_prefix": "Freeport Road, Lebanon, PA 17046",
+      "lat": 40.39952790601537,
+      "lng": -76.38872684571831
+    },
+    {
+      "name": "Keller, Timothy L",
+      "address_prefix": "Bethel Township, Lebanon, PA 17046",
+      "lat": 40.39582342688242,
+      "lng": -76.42353581684583
+    },
+    {
+      "name": "Runkel, Brian",
+      "address_prefix": "1004 Frystown Rd, Fredericksburg, PA 17026",
+      "lat": 40.447691,
+      "lng": -76.37546800000001
+    },
+    {
+      "name": "Troutman, Renee",
+      "address_prefix": "Bethel Township, PA",
+      "lat": 40.42934,
+      "lng": -76.40594
+    },
+    {
+      "name": "Anderson, Kevin W",
+      "address_prefix": "East Hanover Township, PA",
+      "lat": 40.359645164214356,
+      "lng": -76.64989406925118
+    },
+    {
+      "name": "Schwartz, Dan R",
+      "address_prefix": "838 Ono Road, Jonestown, PA 17038",
+      "lat": 40.39194335371425,
+      "lng": -76.51906058192253
+    },
+    {
+      "name": "Shuey, Joel",
+      "address_prefix": "Grantville, PA 17028",
+      "lat": 40.39852288888533,
+      "lng": -76.59961081775295
+    },
+    {
+      "name": "Shuey, Joel",
+      "address_prefix": "51 Main Street, Ono, PA 17077",
+      "lat": 40.40192078825009,
+      "lng": -76.53470542957342
+    },
+    {
+      "name": "Keller, Timothy L",
+      "address_prefix": "Gibble Road, Myerstown, PA 17067",
+      "lat": 40.31047188480158,
+      "lng": -76.3177632065701
+    },
+    {
+      "name": "Keller, Timothy L",
+      "address_prefix": "Stiegel Pike, Newmanstown, PA 17073",
+      "lat": 40.29493065941999,
+      "lng": -76.30501169662301
+    },
+    {
+      "name": "Keller, Timothy L",
+      "address_prefix": "South 501/Stiegel Pike, Myerstown, PA 17067",
+      "lat": 40.334385383587744,
+      "lng": -76.30409605888899
+    },
+    {
+      "name": "Smoker, David",
+      "address_prefix": "149 North Ramona Road, Myerstown, PA 17067",
+      "lat": 40.37967,
+      "lng": -76.33947999999998
+    },
+    {
+      "name": "Samuelson, Lee W",
+      "address_prefix": "171 N Fisher St, Jonestown, PA 17042",
+      "lat": 40.416575993340025,
+      "lng": -76.4862207297171
+    },
+    {
+      "name": "Haslam, David",
+      "address_prefix": "Millcreek Township, PA",
+      "lat": 40.33113156548741,
+      "lng": -76.22839569504471
+    },
+    {
+      "name": "Moyer, Henry",
+      "address_prefix": "1779 Blacks Bridge Rd, Annville, PA 17003",
+      "lat": 40.374933,
+      "lng": -76.56078100000002
+    },
+    {
+      "name": "Rider, Charles K",
+      "address_prefix": "Box 660 Syner Road, Annville, PA 17003",
+      "lat": 40.34565,
+      "lng": -76.58553
+    },
+    {
+      "name": "Keller, Timothy L",
+      "address_prefix": "West Kercher Ave, Lebanon, PA 17046",
+      "lat": 40.37866977123188,
+      "lng": -76.41826813054031
+    },
+    {
+      "name": "Buckfelder, Deborah",
+      "address_prefix": "731 Gravel Hill Road, Palmyra, PA 17078",
+      "lat": 40.36072,
+      "lng": -76.62631299999998
+    },
+    {
+      "name": "Moyer, Henry",
+      "address_prefix": "1 Dogwood Drive, Annville, PA 17003",
+      "lat": 40.332994710388384,
+      "lng": -76.59033143533861
+    },
+    {
+      "name": "Keller, Timothy L",
+      "address_prefix": "Pine Meadow Road, Lebanon, PA 17046",
+      "lat": 40.40731867545467,
+      "lng": -76.42960503520786
+    },
+    {
+      "name": "Troutman, Renee",
+      "address_prefix": "Swatara Township, PA",
+      "lat": 40.42024,
+      "lng": -76.45741
+    },
+    {
+      "name": "O'Planick, David",
+      "address_prefix": "5183 Sinsheim Road, Spring Grove, PA 17362",
+      "lat": 39.81084,
+      "lng": -76.85730000000001
+    },
+    {
+      "name": "Albright, Sam",
+      "address_prefix": "130 Stoney Run Road, Dillsburg, PA 17019",
+      "lat": 40.091725,
+      "lng": -77.01659999999998
+    },
+    {
+      "name": "Fahs, Mike",
+      "address_prefix": "365 Forge Hill Rd, Manchester, PA 17345",
+      "lat": 40.049423899999994,
+      "lng": -76.7108938
+    },
+    {
+      "name": "Shannon, Rick",
+      "address_prefix": "357 Big Spring Road, Etters, PA 17319",
+      "lat": 40.182793673828115,
+      "lng": -76.81594104782567
+    },
+    {
+      "name": "Albright, Sam",
+      "address_prefix": "1030 South Mountain Road, Dillsburg, PA 17019",
+      "lat": 40.08301,
+      "lng": -77.07249999999999
+    },
+    {
+      "name": "Brubaker, James",
+      "address_prefix": "130 Lost Hollow Road, Dillsburg, PA 17019",
+      "lat": 40.0361,
+      "lng": -77.05743000000001
+    },
+    {
+      "name": "Young, Nathan A",
+      "address_prefix": "176 Clear Spring Road, Dillsburg, PA 17019",
+      "lat": 40.06622,
+      "lng": -77.08951000000002
+    },
+    {
+      "name": "Sedlacko, Thomas",
+      "address_prefix": "Jackson Township, PA",
+      "lat": 39.94892222188592,
+      "lng": -76.83434784677841
+    },
+    {
+      "name": "Bitterman, Robert",
+      "address_prefix": "35 Silverdale Ave, Wrightsville, PA 17368",
+      "lat": 39.93919579361771,
+      "lng": -76.48994985197182
+    },
+    {
+      "name": "Stadler, Nancy G",
+      "address_prefix": "220 Singer Rd, New Freedom, PA 17349",
+      "lat": 39.72933,
+      "lng": -76.70278
+    },
+    {
+      "name": "Toothaker, William M",
+      "address_prefix": "Roxberry Road, York Haven, PA 17370",
+      "lat": 40.121403488001995,
+      "lng": -76.80455376449731
+    },
+    {
+      "name": "Wolf, Stephanie A",
+      "address_prefix": "900 Red Mill Rd, Etters, PA 17319",
+      "lat": 40.15487306812586,
+      "lng": -76.79427031000797
+    },
+    {
+      "name": "Jacoby, Wayne",
+      "address_prefix": "2440 Meeting House Rd, Spring Grove, PA 17362",
+      "lat": 39.86343,
+      "lng": -76.81720000000001
+    },
+    {
+      "name": "Edick, Todd A",
+      "address_prefix": "9022 blue Ball Rd, Stewartstown, PA 17363",
+      "lat": 39.782579,
+      "lng": -76.5423229
+    },
+    {
+      "name": "Papke, David",
+      "address_prefix": "1700 Powder Mill Road, York, PA 17403",
+      "lat": 39.92685,
+      "lng": -76.70623999999998
+    },
+    {
+      "name": "Bees LLC, Dawg Gone",
+      "address_prefix": "832 West Middle Street, Hanover, PA 17331",
+      "lat": 39.79034103337424,
+      "lng": -76.99299283325672
+    },
+    {
+      "name": "Dennis, Tim",
+      "address_prefix": "1060 Fairview Drive, Hanover, PA 17331",
+      "lat": 39.76593,
+      "lng": -77.00469
+    }
+  ]
+}

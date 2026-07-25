@@ -65,6 +65,9 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
 .no-access{text-align:center;padding:60px 20px}
 .no-access h2{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--red);margin-bottom:10px}
 
+.next-step{margin-top:12px;padding:12px 14px;border-radius:11px;background:rgba(232,160,32,0.1);border:1px solid rgba(232,160,32,0.35);color:var(--amber);font-size:12.5px;line-height:1.5}
+.next-step.ok{background:rgba(126,200,80,0.08);border-color:rgba(126,200,80,0.3);color:var(--lime)}
+
 .hidden{display:none!important}
 </style>
 </head>
@@ -136,6 +139,8 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
       </div>
 
       <button class="btn btn-secondary" style="margin-top:8px" onclick="clearCache()">🗑 Clear App Cache</button>
+
+      <div class="next-step hidden" id="nextStep"></div>
 
       <div class="log hidden" id="log"></div>
     </div>
@@ -259,6 +264,22 @@ window.startGeocode = async function() {
   document.getElementById('startBtn').textContent = '▶️ Run Again';
   
   log(`\n✓ Done!  ${stats.hi} high  ·  ${stats.mid} medium  ·  ${stats.lo} low  ·  ${stats.fail} failed  ·  ${stats.skipped} skipped (verified)`, 'hi');
+
+  // Failures are normal for rural addresses — hand them off to manual pinning
+  const nextStep = document.getElementById('nextStep');
+  if (stats.fail > 0) {
+    nextStep.innerHTML = `<b>${stats.fail} address${stats.fail === 1 ? '' : 'es'} couldn't be found.</b><br>
+      That's expected for back lanes, new builds, and rural routes — they aren't in the
+      national address database, so no automatic lookup will find them.
+      Pin those by hand and they're done for good.
+      <a href="edit.html?tab=failed" class="btn" style="display:block;text-align:center;text-decoration:none;margin-top:10px">📍 Pin the ${stats.fail} Leftover${stats.fail === 1 ? '' : 's'}</a>`;
+    nextStep.classList.remove('hidden');
+  } else {
+    nextStep.innerHTML = `<b>✓ Every address was found.</b> Nothing left to pin by hand.`;
+    nextStep.className = 'next-step ok';
+    nextStep.classList.remove('hidden');
+  }
+
   setTimeout(() => loadStatus(), 800);
 };
 
