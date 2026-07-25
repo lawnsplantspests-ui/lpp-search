@@ -75,7 +75,12 @@ input::placeholder{color:rgba(245,240,232,0.25)}
 .edit-title{flex:1;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.5px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .edit-record-info{padding:8px 14px;background:rgba(0,0,0,0.3);font-size:11px;color:rgba(245,240,232,0.6);line-height:1.4}
 .edit-record-info b{color:var(--lime)}
+.edit-map-wrap{flex:1;position:relative;display:flex;min-height:0}
 #editMap{flex:1;background:#1a2620}
+.edit-sat-toggle{position:absolute;top:10px;right:10px;z-index:500;padding:7px 11px;font-size:11.5px;font-weight:600;font-family:'DM Sans',sans-serif;background:rgba(13,31,19,0.9);border:1px solid var(--border);border-radius:9px;color:var(--lime);cursor:pointer;-webkit-appearance:none}
+.edit-sat-toggle.on{background:rgba(126,200,80,0.2);border-color:var(--lime)}
+.edit-jump-hint{position:absolute;left:10px;right:60px;top:10px;z-index:500;padding:7px 11px;font-size:11px;line-height:1.4;background:rgba(58,141,222,0.92);color:#fff;border-radius:9px;box-shadow:0 3px 12px rgba(0,0,0,0.4)}
+.edit-jump-hint.hidden{display:none}
 .edit-mode-tabs{display:flex;background:rgba(13,31,19,0.95);border-top:1px solid var(--border);padding:6px;gap:4px}
 .edit-mode-tab{flex:1;padding:9px;font-size:11px;font-weight:600;border:none;background:rgba(0,0,0,0.25);color:rgba(245,240,232,0.5);border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;-webkit-appearance:none}
 .edit-mode-tab.active{background:linear-gradient(135deg,var(--lime),var(--green-mid));color:var(--dark)}
@@ -145,7 +150,11 @@ label{display:block;font-size:10px;font-weight:700;letter-spacing:1.2px;text-tra
     <div class="edit-title" id="editTitle">—</div>
   </div>
   <div class="edit-record-info" id="editInfo">—</div>
-  <div id="editMap"></div>
+  <div class="edit-map-wrap">
+    <div id="editMap"></div>
+    <button class="edit-sat-toggle" id="editSatToggle" onclick="toggleEditSat()">🛰 Satellite</button>
+    <div class="edit-jump-hint hidden" id="editJumpHint"></div>
+  </div>
   <div class="edit-mode-tabs">
     <button class="edit-mode-tab active" id="modeDrag" onclick="setEditMode('drag')">📍 Drag Pin</button>
     <button class="edit-mode-tab" id="modeCoords" onclick="setEditMode('coords')">🔢 Coords</button>
@@ -207,6 +216,7 @@ let typeFilter = 'all';
 let editingRecord = null;
 let editMap = null;
 let editMarker = null;
+let editStreet = null, editSat = null, editSatOn = false;
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) { window.location.href = 'index.html'; return; }
@@ -363,6 +373,54 @@ function renderCard(r) {
   `;
 }
 
+// Records with no pin open over Harrisburg by default, which is useless when
+// the record is in Lancaster or Adams county. Look up its town and start the
+// camera there. This is ONLY a starting view — a town centroid is far too
+// coarse to ever save as the record's location.
+async function jumpToTown(rec) {
+  const addr = (rec.address || '').replace(/,?\s*-?\d+\.\d+,\s*-?\d+\.\d+\s*$/, '').trim();
+  // Town + state from the address line, else fall back to township + county
+  const parts = addr.split(',').map(s => s.trim()).filter(Boolean);
+  const town = parts.length >= 2 ? parts.slice(-2).join(', ') : '';
+  const queries = [
+    town && !/^unknown/i.test(town) ? town : '',
+    rec.township && rec.county ? `${rec.township}, ${rec.county} County, PA` : '',
+    rec.county ? `${rec.county} County, PA` : ''
+  ].filter(Boolean);
+
+  for (const q of queries) {
+    try {
+      const res = await fetch('https://photon.komoot.io/api?limit=1&q=' + encodeURIComponent(q));
+      const data = await res.json();
+      const f = (data.features || [])[0];
+      if (!f) continue;
+      const [lng, lat] = f.geometry.coordinates;
+      if (!editMap || editingRecord !== rec) return;   // editor moved on
+      editMap.setView([lat, lng], 14);
+      if (editMarker) {
+        editMarker.setLatLng([lat, lng]);
+        document.getElementById('dragLat').value = lat.toFixed(6);
+        document.getElementById('dragLng').value = lng.toFixed(6);
+      }
+      const hint = document.getElementById('editJumpHint');
+      hint.innerHTML = `📍 Starting near <b>${escapeHtml(q)}</b> — drag the pin to the exact spot`;
+      hint.classList.remove('hidden');
+      setTimeout(() => hint.classList.add('hidden'), 6000);
+      return;
+    } catch(e) { /* try next */ }
+  }
+}
+
+window.toggleEditSat = function() {
+  if (!editMap) return;
+  editSatOn = !editSatOn;
+  const btn = document.getElementById('editSatToggle');
+  if (editSatOn) { editMap.removeLayer(editStreet); editSat.addTo(editMap); editSat.bringToBack(); }
+  else { editMap.removeLayer(editSat); editStreet.addTo(editMap); editStreet.bringToBack(); }
+  btn.classList.toggle('on', editSatOn);
+  btn.textContent = editSatOn ? '🗺 Map' : '🛰 Satellite';
+};
+
 // ── EDITOR ─────────────────────────────────────────────
 window.openEditor = function(tab, row) {
   const rec = registry.find(r => r.tab === tab && r.row === row);
@@ -385,8 +443,16 @@ window.openEditor = function(tab, row) {
     const lng = rec.lng || -76.88;
     const zoom = rec.lat ? 17 : 11;
     editMap = L.map('editMap', { zoomControl: true, attributionControl: false }).setView([lat, lng], zoom);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(editMap);
-    
+    editStreet = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(editMap);
+    editSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
+    editSatOn = false;
+    const satBtn = document.getElementById('editSatToggle');
+    if (satBtn) { satBtn.classList.remove('on'); satBtn.textContent = '🛰 Satellite'; }
+
+    // No pin yet? Jump to its town so you're not panning across the state.
+    // This is only a starting camera position — never a saved location.
+    if (!rec.lat) jumpToTown(rec);
+
     const icon = L.divIcon({
       className: 'draggable-marker',
       html: `<div style="background:${rec.type==='Hyper'?'#c0392b':'#e8a020'};width:30px;height:30px;border-radius:50%;border:4px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px">${rec.type==='Hyper'?'!':'🐝'}</div>`,
