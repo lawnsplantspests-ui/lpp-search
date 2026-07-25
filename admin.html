@@ -97,6 +97,22 @@ input::placeholder{color:rgba(245,240,232,0.25)}
 .code-label{font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:rgba(245,240,232,0.5);margin-bottom:4px;font-weight:600}
 .code-val{font-family:'DM Mono',monospace;font-size:22px;color:var(--lime);letter-spacing:4px;font-weight:600}
 
+/* Fix Locations — numbered steps */
+.fix-step{display:flex;gap:11px;padding:12px 0;border-bottom:1px solid rgba(126,200,80,0.1)}
+.fix-step:last-of-type{border-bottom:none}
+.fix-num{flex-shrink:0;width:24px;height:24px;border-radius:50%;background:rgba(126,200,80,0.15);border:1px solid rgba(126,200,80,0.4);color:var(--lime);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.fix-body{flex:1;min-width:0}
+.fix-title{font-size:13.5px;font-weight:700;line-height:1.3;margin-bottom:3px}
+.fix-desc{font-size:11.5px;line-height:1.45;color:rgba(245,240,232,0.55)}
+.retired{margin-top:12px;border:1px solid rgba(245,240,232,0.1);border-radius:10px;background:rgba(0,0,0,0.2)}
+.retired summary{padding:10px 13px;font-size:12px;font-weight:600;color:rgba(245,240,232,0.45);cursor:pointer;list-style:none}
+.retired summary::-webkit-details-marker{display:none}
+.retired summary::before{content:"▸ ";color:rgba(245,240,232,0.35)}
+.retired[open] summary::before{content:"▾ "}
+.retired-body{padding:0 13px 12px;font-size:11.5px;line-height:1.5;color:rgba(245,240,232,0.5)}
+.retired-body p{margin-bottom:8px}
+.retired-body b{color:rgba(245,240,232,0.7)}
+
 .hidden{display:none!important}
 
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--lime);color:var(--dark);padding:12px 20px;border-radius:12px;font-size:13px;font-weight:600;z-index:200;box-shadow:0 8px 32px rgba(126,200,80,0.4);display:none;animation:toastIn 0.3s ease}
@@ -195,16 +211,61 @@ input::placeholder{color:rgba(245,240,232,0.25)}
         </div>
 
         <a href="https://docs.google.com/spreadsheets/d/1UED2EPSARAUhNua4mUGSgxkO2q18v3PkzkrVWmg5Ngk/edit" target="_blank" class="btn btn-secondary" style="display:block;text-align:center;text-decoration:none;margin-bottom:8px">📊 Open Master Google Sheet</a>
-        
+
         <a href="https://paplants.pa.gov" target="_blank" class="btn btn-secondary" style="display:block;text-align:center;text-decoration:none;margin-bottom:8px">🔗 Open PA Plants Registry</a>
 
-        <a href="restore-gps.html" class="btn" style="display:block;text-align:center;text-decoration:none;margin-bottom:8px;background:linear-gradient(135deg,#7ec850,#2d7a47);color:#0d1f13">🎯 Restore Original GPS Points (Run First)</a>
-
-        <a href="recensus.html" class="btn" style="display:block;text-align:center;text-decoration:none;margin-bottom:8px">🇺🇸 Re-geocode with US Census (Recommended)</a>
-
-        <a href="geocode.html" class="btn btn-secondary" style="display:block;text-align:center;text-decoration:none;margin-bottom:8px">🌐 Geocode Registry (OSM - legacy)</a>
-
         <button class="btn" onclick="markSynced()" style="margin-top:6px">✓ Mark Sync Complete (Update Timestamp)</button>
+      </div>
+
+      <!-- LOCATION FIXES — one clear path per job -->
+      <div class="section-card">
+        <div class="section-title">📍 Fix Locations</div>
+        <div class="info-box" style="margin-bottom:14px">
+          Pick the job you need. <b>Start at the top</b> — the first one fixes
+          almost everything automatically.
+        </div>
+
+        <div class="fix-step">
+          <div class="fix-num">1</div>
+          <div class="fix-body">
+            <div class="fix-title">Missing or bad pins — fix them all at once</div>
+            <div class="fix-desc">Looks up every address that has no GPS (or a poor one) and fills it in automatically. This is the one you want almost every time. Safe to re-run.</div>
+            <a href="recensus.html" class="btn" style="display:block;text-align:center;text-decoration:none;margin-top:9px">🇺🇸 Auto-Fix Locations (US Census)</a>
+          </div>
+        </div>
+
+        <div class="fix-step">
+          <div class="fix-num">2</div>
+          <div class="fix-body">
+            <div class="fix-title">One pin is in the wrong spot</div>
+            <div class="fix-desc">Search for that record by name and drag its pin to the right place.</div>
+            <a href="edit.html" class="btn btn-secondary" style="display:block;text-align:center;text-decoration:none;margin-top:9px">✏️ Fix One Address</a>
+          </div>
+        </div>
+
+        <div class="fix-step">
+          <div class="fix-num">3</div>
+          <div class="fix-body">
+            <div class="fix-title">Double-check pins one by one</div>
+            <div class="fix-desc">Walks you through records that haven't been confirmed yet, one at a time, so you can approve or correct each.</div>
+            <a href="verify.html" class="btn btn-secondary" style="display:block;text-align:center;text-decoration:none;margin-top:9px">✅ Review Unconfirmed Pins</a>
+          </div>
+        </div>
+
+        <details class="retired">
+          <summary>Retired tools (don't use these)</summary>
+          <div class="retired-body">
+            <p><b>🎯 Restore Original GPS Points</b> — a one-time repair that was
+            already run in June 2026. Running it again would overwrite newer
+            corrections with old saved coordinates. Leave it alone.</p>
+            <p><b>🌐 Geocode Registry (OSM)</b> — the old address lookup,
+            replaced by the US Census one above, which is more accurate for
+            rural PA. No reason to use it.</p>
+            <p style="opacity:0.6;margin-top:8px">If you ever truly need them:
+            <a href="restore-gps.html" style="color:rgba(245,240,232,0.5)">restore-gps</a> ·
+            <a href="geocode.html" style="color:rgba(245,240,232,0.5)">osm-geocode</a></p>
+          </div>
+        </details>
       </div>
 
       <div class="section-card">
