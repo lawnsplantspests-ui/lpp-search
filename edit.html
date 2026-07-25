@@ -222,7 +222,10 @@ async function loadRegistry() {
     const data = await res.json();
     registry = data.records || [];
     findClusters();
-    renderList();
+    // edit.html?tab=failed opens straight into the "No GPS" worklist
+    const wantTab = new URLSearchParams(location.search).get('tab');
+    if (wantTab === 'failed' || wantTab === 'clusters') setTab(wantTab);
+    else renderList();
   } catch(e) {
     document.getElementById('listContent').innerHTML = 
       `<div class="empty">⚠️ Failed to load: ${e.message}</div>`;
