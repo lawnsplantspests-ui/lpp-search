@@ -58,6 +58,10 @@ input::placeholder{color:rgba(245,240,232,0.25)}
 .rec-badge.apiary{background:rgba(232,160,32,0.2);color:var(--amber)}
 .rec-badge.cluster{background:rgba(232,160,32,0.25);color:var(--amber);margin-left:4px}
 .rec-badge.failed{background:rgba(192,57,43,0.3);color:#e74c3c;margin-left:4px}
+.rec-badge.prio-hyper{background:rgba(192,57,43,0.35);color:#ff8b7d;margin-left:4px}
+.rec-badge.prio-easy{background:rgba(126,200,80,0.2);color:var(--lime);margin-left:4px}
+.rec-badge.prio-road{background:rgba(232,160,32,0.18);color:var(--amber);margin-left:4px}
+.rec-badge.prio-junk{background:rgba(245,240,232,0.1);color:rgba(245,240,232,0.45);margin-left:4px}
 .rec-badge.nocoords{background:rgba(245,240,232,0.1);color:rgba(245,240,232,0.5);margin-left:4px}
 .rec-addr{font-size:11px;color:rgba(245,240,232,0.55);line-height:1.35}
 .rec-coords{font-family:'DM Mono',monospace;font-size:10px;color:rgba(126,200,80,0.6);margin-top:3px}
@@ -269,6 +273,23 @@ window.setTypeFilter = function(f) {
   renderList();
 };
 
+// Worklist ranking for the "No GPS" tab — easiest + most important first.
+// 0 hypersensitive · 1 has a street number · 2 road only · 3 no real address
+function pinPriority(r) {
+  const addr = (r.address || '').replace(/,?\s*-?\d+\.\d+,\s*-?\d+\.\d+\s*$/, '').trim();
+  const junk = !addr || /^unknown/i.test(addr) || /,\s*unknown\s*,/i.test(addr) || /\b11111\b/.test(addr);
+  if (junk) return 3;
+  if (r.type === 'Hyper') return 0;
+  return /^\d/.test(addr) ? 1 : 2;   // leading house number = quick drop
+}
+
+// Town portion of the address, so one town's records stay together
+function townOf(r) {
+  const addr = (r.address || '').replace(/,?\s*-?\d+\.\d+,\s*-?\d+\.\d+\s*$/, '').trim();
+  const parts = addr.split(',').map(s => s.trim()).filter(Boolean);
+  return (parts.length >= 2 ? parts[parts.length - 2] : (r.township || '')).toLowerCase();
+}
+
 window.renderList = function() {
   const search = document.getElementById('searchInput').value.trim().toLowerCase();
   let records = registry.slice();
@@ -305,6 +326,17 @@ window.renderList = function() {
       const sa = clusters[ka]?.length || 0;
       const sb = clusters[kb]?.length || 0;
       if (sa !== sb) return sb - sa;
+      return (a.name||'').localeCompare(b.name||'');
+    });
+  } else if (currentTab === 'failed') {
+    // Worklist order: hypers first (notification is a legal obligation), then
+    // the quick ones with a street number, then road-only guesses, junk last.
+    // Within a group, keep the same town together so you work an area at once.
+    records.sort((a,b) => {
+      const pa = pinPriority(a), pb = pinPriority(b);
+      if (pa !== pb) return pa - pb;
+      const ta = townOf(a), tb = townOf(b);
+      if (ta !== tb) return ta.localeCompare(tb);
       return (a.name||'').localeCompare(b.name||'');
     });
   } else {
@@ -345,6 +377,14 @@ function renderCard(r) {
   if (!r.lat || !r.lng) {
     extraClass = ' no-coords';
     extraBadge = '<span class="rec-badge nocoords">NO GPS</span>';
+    // On the worklist, say how hard this one will be to place
+    if (currentTab === 'failed') {
+      const p = pinPriority(r);
+      if (p === 0)      extraBadge += '<span class="rec-badge prio-hyper">⚠️ DO FIRST</span>';
+      else if (p === 1) extraBadge += '<span class="rec-badge prio-easy">QUICK</span>';
+      else if (p === 2) extraBadge += '<span class="rec-badge prio-road">ROAD ONLY</span>';
+      else              extraBadge += '<span class="rec-badge prio-junk">NO ADDRESS</span>';
+    }
   } else {
     const key = r.lat.toFixed(4) + ',' + r.lng.toFixed(4);
     const clusterSize = clusters[key]?.length || 1;
