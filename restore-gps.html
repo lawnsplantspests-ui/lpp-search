@@ -52,14 +52,24 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
 
   <div id="mainContent" class="hidden">
     <div class="title">Restore Original GPS</div>
-    <div class="subtitle">Restore PA Plants "GPS Point" coordinates that were overwritten by re-geocoding</div>
+    <div class="subtitle">Retired one-time repair — already completed</div>
 
-    <div class="info-box">
-      🎯 <strong>What this does:</strong> The PA Plants registry has records marked as "GPS Point" where the registrant provided exact coordinates directly. These are the most accurate locations we have. This tool restores those original coords and marks them VERIFIED so they won't be touched again.
+    <div style="background:rgba(192,57,43,0.12);border:1px solid rgba(192,57,43,0.5);border-radius:12px;padding:14px 16px;margin-bottom:14px;font-size:13px;line-height:1.55;color:#f0a79e">
+      🛑 <strong style="color:#e74c3c">Already run — don't run this again.</strong><br>
+      This was a one-time repair, completed in June 2026. It writes a saved
+      snapshot of <span id="recordCount">78</span> coordinates from that date.
+      <br><br>
+      Running it now would <strong>overwrite any corrections made since</strong>
+      with those older coordinates, and re-lock them as VERIFIED so the
+      auto-fixer skips them for good.
+      <br><br>
+      To fix locations today, use
+      <a href="recensus.html" style="color:var(--lime);font-weight:700">Auto-Fix Locations (US Census)</a>
+      or <a href="edit.html" style="color:var(--lime);font-weight:700">Fix One Address</a>.
     </div>
 
-    <div class="warning-box">
-      ⚡ <strong>Only run this once.</strong> It will match by name+address and restore <span id="recordCount">78</span> GPS Point records to their original PA Plants coordinates.
+    <div class="info-box">
+      🎯 <strong>What it did:</strong> PA Plants has records marked "GPS Point" where the registrant gave exact coordinates. Re-geocoding had overwritten some of them, so this restored those originals and marked them VERIFIED. That work is done — those records are the 79 VERIFIED ones in the registry today.
     </div>
 
     <div class="card">
@@ -110,8 +120,12 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 window.startRestore = async function() {
-  if (!confirm(`Restore ${ORIGINAL_GPS.length} original GPS Point coordinates from PA Plants registry?\n\nThis will mark them VERIFIED so they're never re-geocoded.`)) return;
-  
+  // This repair already ran in June 2026. Re-running overwrites newer fixes
+  // with a stale snapshot, so require a typed confirmation.
+  if (!confirm(`⚠️ This tool already ran in June 2026.\n\nRunning it again will OVERWRITE any location corrections made since then with ${ORIGINAL_GPS.length} saved coordinates from that date, and re-lock them as VERIFIED so the auto-fixer skips them.\n\nAlmost certainly you want "Auto-Fix Locations (US Census)" instead.\n\nContinue anyway?`)) return;
+  const typed = prompt('To confirm you really want to overwrite current locations with the June 2026 snapshot, type:  OVERWRITE');
+  if (String(typed || '').trim().toUpperCase() !== 'OVERWRITE') { alert('Cancelled — nothing was changed.'); return; }
+
   const btn = document.getElementById('startBtn');
   btn.disabled = true;
   btn.innerHTML = '<span class="btn-spinner"></span>Loading registry…';
