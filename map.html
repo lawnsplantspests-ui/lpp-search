@@ -139,6 +139,25 @@ body.role-employee .leaflet-popup-content a[href^="mailto:"]{user-select:auto;-w
 .quick-item.swarm{border-color:rgba(126,200,80,0.5)}
 .quick-item.hive{border-color:rgba(147,51,234,0.5)}
 .quick-item.check{border-color:rgba(58,141,222,0.5)}
+.quick-item.help{border-color:rgba(245,240,232,0.35)}
+
+/* "Which is it?" field guide */
+.id-card{border-radius:12px;padding:12px 14px;margin-bottom:10px;border:1px solid}
+.id-card.swarm{background:rgba(126,200,80,0.07);border-color:rgba(126,200,80,0.35)}
+.id-card.colony{background:rgba(147,51,234,0.09);border-color:rgba(147,51,234,0.4)}
+.id-card.tricky{background:rgba(232,160,32,0.08);border-color:rgba(232,160,32,0.35)}
+.id-head{font-size:12px;font-weight:700;letter-spacing:0.6px;margin-bottom:7px}
+.id-card.swarm .id-head{color:var(--lime)}
+.id-card.colony .id-head{color:#c084fc}
+.id-card.tricky .id-head{color:var(--amber)}
+.id-list{list-style:none;margin:0 0 8px;padding:0}
+.id-list li{position:relative;padding-left:15px;font-size:12.5px;line-height:1.5;color:rgba(245,240,232,0.85);margin-bottom:2px}
+.id-list li::before{content:"·";position:absolute;left:4px;font-weight:700;color:rgba(245,240,232,0.4)}
+.id-do{font-size:11.5px;line-height:1.45;color:rgba(245,240,232,0.55);font-style:italic;margin-bottom:9px}
+.id-tricky-body{font-size:12px;line-height:1.5;color:rgba(245,240,232,0.8)}
+.id-btn{width:100%;padding:11px;border-radius:10px;font-size:13px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;-webkit-appearance:none}
+.id-btn.swarm{background:linear-gradient(135deg,var(--lime),var(--green-mid));color:var(--dark)}
+.id-btn.colony{background:linear-gradient(135deg,#9333ea,#6d28d9);color:#fff}
 @keyframes qaIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
 /* Measure tool */
@@ -209,7 +228,7 @@ body.placing .layer-toggles,body.placing .county-filter,body.placing .stats-over
   </button>
   <button class="action-btn" onclick="startHivePlacement()">
     <span class="icon">⬢</span>
-    <span class="lbl">Mark Hive</span>
+    <span class="lbl">Mark Colony</span>
   </button>
   <button class="action-btn" onclick="toggleFollow()">
     <span class="icon" id="followIcon">📍</span>
@@ -219,8 +238,9 @@ body.placing .layer-toggles,body.placing .county-filter,body.placing .stats-over
 
 <!-- Quick Add floating button + menu -->
 <div class="quick-menu" id="quickMenu">
+  <button class="quick-item help" onclick="quickAdd('which')"><span class="qi-ic">❓</span> Which is it?</button>
   <button class="quick-item swarm" onclick="quickAdd('swarm')"><span class="qi-ic">🍯</span> Log Swarm</button>
-  <button class="quick-item hive" onclick="quickAdd('hive')"><span class="qi-ic">⬢</span> Mark Hive</button>
+  <button class="quick-item hive" onclick="quickAdd('hive')"><span class="qi-ic">⬢</span> Mark Colony</button>
   <button class="quick-item check" onclick="quickAdd('check')"><span class="qi-ic">🎯</span> Spot Check</button>
 </div>
 <button class="fab" id="fab" onclick="toggleQuickAdd()" aria-label="Quick add">+</button>
@@ -255,11 +275,60 @@ body.placing .layer-toggles,body.placing .county-filter,body.placing .stats-over
   <button class="place-btn primary" id="placePrimaryBtn">✓ Drop Pin</button>
 </div>
 
+<!-- "Which is it?" field guide -->
+<div class="dialog-bg" id="whichDialog">
+  <div class="dialog">
+    <div class="dialog-title" style="color:#5ba8e8">❓ Swarm or Colony?</div>
+    <div class="dialog-sub">The 3-second test: <b>look for comb, or a hole they're using.</b></div>
+
+    <div class="id-card swarm">
+      <div class="id-head">🍯 SWARM — temporary, collectible</div>
+      <ul class="id-list">
+        <li>A <b>bare ball or beard of bees</b> hanging in the open</li>
+        <li>On a branch, fence post, mailbox, bumper</li>
+        <li><b>No wax comb</b> anywhere</li>
+        <li>Calm — full of honey, no home to defend</li>
+      </ul>
+      <div class="id-do">They're house-hunting and usually gone in a few hours to 3 days. Free bees if you can get them quick.</div>
+      <button class="id-btn swarm" onclick="fromWhich('swarm')">🍯 Log a Swarm</button>
+    </div>
+
+    <div class="id-card colony">
+      <div class="id-head">⬢ COLONY — established, stays put</div>
+      <ul class="id-list">
+        <li>Bees <b>streaming in and out of one hole</b></li>
+        <li>In a tree hollow, wall, soffit, chimney, shed</li>
+        <li><b>Comb inside</b> — brood and honey stores</li>
+        <li>Defensive — they have something to protect</li>
+      </ul>
+      <div class="id-do">Not going anywhere. This is a cutout or trap-out — a removal job, not a pickup.</div>
+      <button class="id-btn colony" onclick="fromWhich('hive')">⬢ Mark a Colony</button>
+    </div>
+
+    <div class="id-card tricky">
+      <div class="id-head">⚠️ The one that fools you</div>
+      <div class="id-tricky-body">
+        <b>Comb built out in the open</b>, hanging on a branch with the bees —
+        that's an <b>open-air colony</b>, not a swarm. It started as a swarm that
+        never found a cavity. Log it as a <b>Colony</b>.
+        <br><br>
+        Same goes for a "swarm" that's been in one spot <b>more than 3–4 days</b> —
+        check for fresh white comb. If it's there, they've moved in.
+      </div>
+    </div>
+
+    <div class="dialog-actions">
+      <button class="btn-cancel" onclick="closeWhich()">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- Swarm dialog -->
 <div class="dialog-bg" id="swarmDialog">
   <div class="dialog">
     <div class="dialog-title">🍯 Log Swarm</div>
-    <div class="dialog-sub">Record a honey bee swarm found in the field</div>
+    <div class="dialog-sub">A temporary cluster — no comb
+      · <a href="#" onclick="openWhich();return false;" style="color:#5ba8e8;text-decoration:none">sure it's not a colony?</a></div>
 
     <div class="form-group">
       <label>Location Source</label>
@@ -296,14 +365,26 @@ body.placing .layer-toggles,body.placing .county-filter,body.placing .stats-over
 <!-- Hive dialog -->
 <div class="dialog-bg" id="hiveDialog">
   <div class="dialog">
-    <div class="dialog-title" style="color:#a855f7">⬢ Mark Unregistered Hive</div>
-    <div class="dialog-sub">A hive / colony not on the PA Plants registry</div>
+    <div class="dialog-title" style="color:#a855f7">⬢ Mark Colony</div>
+    <div class="dialog-sub">An established colony or hive not on the PA Plants registry
+      · <a href="#" onclick="openWhich();return false;" style="color:#5ba8e8;text-decoration:none">not a swarm?</a></div>
 
     <div class="coords-display" id="hiveCoords">—</div>
 
     <div class="form-group">
+      <label>What is it?</label>
+      <select id="hiveKind">
+        <option value="Feral colony — in a tree">🌳 Feral colony — in a tree</option>
+        <option value="Feral colony — in a structure">🏠 Feral colony — wall / soffit / chimney</option>
+        <option value="Open-air colony — exposed comb">🌿 Open-air colony — comb out in the open</option>
+        <option value="Managed hive — unregistered">📦 Someone's hive boxes — unregistered</option>
+        <option value="Unknown">❔ Not sure yet</option>
+      </select>
+    </div>
+
+    <div class="form-group">
       <label>Label (optional)</label>
-      <input type="text" id="hiveLabel" placeholder="e.g. Wild colony in oak, behind 123 Oak St">
+      <input type="text" id="hiveLabel" placeholder="e.g. big oak behind 123 Oak St">
     </div>
 
     <div class="form-group">
@@ -317,12 +398,12 @@ body.placing .layer-toggles,body.placing .county-filter,body.placing .stats-over
 
     <div class="form-group">
       <label>Notes</label>
-      <textarea id="hiveNotes" placeholder="Size, hive boxes vs. wild colony, customer name, access notes, etc."></textarea>
+      <textarea id="hiveNotes" placeholder="Entrance height, access, customer name, cutout vs trap-out, etc."></textarea>
     </div>
 
     <div class="dialog-actions">
       <button class="btn-cancel" onclick="closeHiveDialog()">← Back</button>
-      <button class="btn-save" onclick="saveHive()" id="saveHiveBtn" style="background:linear-gradient(135deg,#9333ea,#6d28d9);color:#fff">Save Hive</button>
+      <button class="btn-save" onclick="saveHive()" id="saveHiveBtn" style="background:linear-gradient(135deg,#9333ea,#6d28d9);color:#fff">Save Colony</button>
     </div>
   </div>
 </div>
@@ -376,6 +457,8 @@ let placedMarker = null;
 let moveKind = null;         // 'hive' | 'swarm' — what's being relocated
 let editingMoveId = null;    // id (sheet row) of the record being moved
 let editingMoveAddr = '';    // its existing address text
+
+let whichCameFrom = null;    // dialog to return to when the field guide closes
 
 // Measure tool
 let measuring = false;
@@ -653,7 +736,7 @@ function buildPopup(type, d) {
       if (d.status !== 'Active')  opts.push(sb('🟢 Active', 'Active', '#7ec850'));
       statusBtns = `<div style="margin-top:7px;display:flex;gap:6px;flex-wrap:wrap">${opts.join('')}</div>`;
     }
-    return `<b style="color:#c084fc">⬢ Unregistered Hive</b><br>
+    return `<b style="color:#c084fc">⬢ Colony</b><br>
       ${d.label ? `<b style="font-size:14px;color:#c084fc">${escapeHtml(d.label)}</b><br>` : ''}
       📅 ${date}<br>
       📍 ${d.lat.toFixed(6)}, ${d.lng.toFixed(6)}<br>
@@ -962,7 +1045,7 @@ function startPlacement(context) {
   document.getElementById('crosshair').classList.add('show');
   setPlaceBanner(context === 'swarm'
     ? 'Pan the map so the crosshair sits on the swarm, then tap Drop Pin'
-    : 'Pan the map so the crosshair sits on the hive, then tap Drop Pin');
+    : 'Pan the map so the crosshair sits on the colony, then tap Drop Pin');
   showPlaceBar('✓ Drop Pin', dropPin);
 }
 
@@ -975,7 +1058,7 @@ window.dropPin = function() {
   placedMarker.on('dragend', updatePlaceDistance);
   updatePlaceDistance();
   if (placeContext === 'swarm') showPlaceBar('✓ Use This Spot', confirmSwarmPin);
-  else showPlaceBar('✓ Save Hive', openHiveDetails);
+  else showPlaceBar('✓ Save Colony', openHiveDetails);
 };
 
 // Swarm: take the dropped pin's coords back into the swarm dialog
@@ -1020,11 +1103,44 @@ window.toggleQuickAdd = function() {
 window.quickAdd = function(kind) {
   toggleQuickAdd();
   if (kind === 'swarm') openSwarmDialog();
+  else if (kind === 'which') openWhich();
   else if (kind === 'check') {
     showToast('Tap any spot to check for nearby bees');
     map.once('click', (e) => spotCheck(e.latlng.lat, e.latlng.lng));
   }
   else startHivePlacement();
+};
+
+// ── "Which is it?" field guide ─────────────────────────
+window.openWhich = function() {
+  // Remember what was open so Close returns you there instead of dumping you out
+  whichCameFrom = document.getElementById('swarmDialog').classList.contains('show') ? 'swarm'
+                : document.getElementById('hiveDialog').classList.contains('show') ? 'hive' : null;
+  document.getElementById('swarmDialog').classList.remove('show');
+  document.getElementById('hiveDialog').classList.remove('show');
+  document.getElementById('whichDialog').classList.add('show');
+};
+
+window.closeWhich = function() {
+  document.getElementById('whichDialog').classList.remove('show');
+  if (whichCameFrom === 'swarm') document.getElementById('swarmDialog').classList.add('show');
+  else if (whichCameFrom === 'hive') document.getElementById('hiveDialog').classList.add('show');
+  whichCameFrom = null;
+};
+
+// Picked one from the guide — go straight into logging it
+window.fromWhich = function(kind) {
+  document.getElementById('whichDialog').classList.remove('show');
+  const wasMidHive = (whichCameFrom === 'hive');
+  whichCameFrom = null;
+  if (kind === 'swarm') {
+    if (wasMidHive) { cancelPlacement(); }   // drop the half-placed colony pin
+    openSwarmDialog();
+  } else {
+    if (wasMidHive) { document.getElementById('hiveDialog').classList.add('show'); return; }
+    closeSwarmDialog();
+    startHivePlacement();
+  }
 };
 
 // ── Move an existing hive or swarm (admin) ─────────────
@@ -1090,6 +1206,7 @@ window.openHiveDetails = function() {
   document.getElementById('hiveLabel').value = '';
   document.getElementById('hiveNotes').value = '';
   document.getElementById('hiveStatus').value = 'Active';
+  document.getElementById('hiveKind').selectedIndex = 0;
   const dist = (userLat != null) ? ' • ~' + fmtDist(distanceFeet(userLat, userLng, ll.lat, ll.lng)) + ' from you' : '';
   document.getElementById('hiveCoords').textContent = ll.lat.toFixed(6) + ', ' + ll.lng.toFixed(6) + dist;
   document.getElementById('hiveDialog').classList.add('show');
@@ -1105,8 +1222,14 @@ window.saveHive = async function() {
   const btn = document.getElementById('saveHiveBtn');
   const ll = placedMarker.getLatLng();
   const status = document.getElementById('hiveStatus').value;
-  const label = document.getElementById('hiveLabel').value.trim();
+  const kind = document.getElementById('hiveKind').value;
+  const typed = document.getElementById('hiveLabel').value.trim();
   const notes = document.getElementById('hiveNotes').value.trim();
+  // The Hives sheet has no "kind" column, so carry it at the front of the
+  // label — readable in the sheet and in the map popup without a script change
+  const label = (kind && kind !== 'Unknown')
+    ? (typed ? `${kind} · ${typed}` : kind)
+    : typed;
 
   btn.disabled = true;
   btn.innerHTML = '<span class="btn-spinner"></span>Saving...';
@@ -1139,9 +1262,9 @@ window.saveHive = async function() {
   document.getElementById('hiveDialog').classList.remove('show');
   toggleSatellite(satBeforePlacement);
   renderAllLayers();
-  showToast(ok ? '✓ Hive marked' : '📴 No signal — saved on phone, will auto-send');
+  showToast(ok ? '✓ Colony marked' : '📴 No signal — saved on phone, will auto-send');
   btn.disabled = false;
-  btn.innerHTML = 'Save Hive';
+  btn.innerHTML = 'Save Colony';
 };
 
 // ── One-tap status updates from pin popups ─────────────
