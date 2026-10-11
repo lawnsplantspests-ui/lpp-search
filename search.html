@@ -214,7 +214,7 @@ body.role-employee .contact-card a[href^="mailto:"]{user-select:auto;-webkit-use
 // BeeAware's Google Apps Script backend only answers requests that carry the app password, checked
 // on Google's side. It is the same password as FieldPro and the LPP Log, kept in this browser under
 // the same name (same site), so a device that already unlocked those opens BeeAware without asking.
-// The name picked on BeeAware's start screen says who you are; this is what protects the registry data. It is never written into this file,
+// This is what protects the registry data. It is never written into this file,
 // because this file is public. Every request to a script.google.com backend gets it added here, so
 // no individual call site has to remember it.
 (function(){
@@ -262,11 +262,12 @@ body.role-employee .contact-card a[href^="mailto:"]{user-select:auto;-webkit-use
 <script type="module">
 // ── Who's using this device ───────────────────────────────────────────────────────────────
 // BeeAware no longer has its own sign-in (Oct 2026). The shared app password protects the data, and
-// the name picked on the start screen (localStorage 'lpp_user') says who is logging. These stand in
+// 'Logged by' is Devon, the only user (localStorage 'lpp_user'). These stand in
 // for the old Firebase calls so the rest of this page is unchanged.
 const auth = null;
 function onAuthStateChanged(_auth, cb) {
   let u = null; try { u = JSON.parse(localStorage.getItem('lpp_user') || 'null'); } catch (e) {}
+  if (!u || !u.name) { u = { name: 'Devon Alleman', email: '', role: 'admin', uid: 'devon' }; localStorage.setItem('lpp_user', JSON.stringify(u)); }   // Devon is the only user
   setTimeout(() => cb(u && u.name ? { uid: u.uid || 'local', email: u.email || '', displayName: u.name } : null), 0);
 }
 
