@@ -145,6 +145,55 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
   </div>
 </div>
 
+<script>
+// ── App password ─────────────────────────────────────────────────────────────────────────────
+// BeeAware's Google Apps Script backend only answers requests that carry the app password, checked
+// on Google's side. It is the same password as FieldPro and the LPP Log, kept in this browser under
+// the same name (same site), so a device that already unlocked those opens BeeAware without asking.
+// The Firebase sign-in still says who you are; this is what protects the registry data. It is never written into this file,
+// because this file is public. Every request to a script.google.com backend gets it added here, so
+// no individual call site has to remember it.
+(function(){
+  var KEY='lpp_app_key';
+  function getKey(){ try{ return localStorage.getItem(KEY)||''; }catch(e){ return ''; } }
+  function ask(msg){
+    if(document.getElementById('appkey-ov')) return;
+    var ov=document.createElement('div'); ov.id='appkey-ov';
+    ov.style.cssText='position:fixed;inset:0;z-index:2147483000;background:rgba(10,14,12,.96);display:flex;align-items:flex-start;justify-content:center;padding-top:16vh;font-family:-apple-system,Segoe UI,Roboto,sans-serif';
+    ov.innerHTML='<form style="width:300px;max-width:88vw;text-align:center;color:#eee">'+
+      '<div style="font-size:20px;font-weight:700;margin-bottom:6px">App password</div>'+
+      '<div id="appkey-msg" style="font-size:13px;opacity:.8;margin-bottom:18px"></div>'+
+      '<input type="password" autocomplete="current-password" style="width:100%;box-sizing:border-box;padding:14px;font-size:18px;border-radius:10px;border:1px solid #555;background:#1b211d;color:#fff;margin-bottom:12px">'+
+      '<button style="width:100%;padding:14px;font-size:16px;font-weight:700;border:0;border-radius:10px;background:#3fa34d;color:#fff">Unlock</button></form>';
+    (document.body||document.documentElement).appendChild(ov);
+    ov.querySelector('#appkey-msg').textContent=msg||'Enter it once — this device will remember it.';
+    var f=ov.querySelector('form'), i=ov.querySelector('input'); setTimeout(function(){ i.focus(); },50);
+    f.onsubmit=function(e){ e.preventDefault(); var v=i.value.trim(); if(!v) return; try{ localStorage.setItem(KEY,v); }catch(_){} location.reload(); };
+  }
+  window.appKey=getKey; window.appKeyAsk=ask;
+  var GAS=/^https:\/\/script\.google\.com\/macros\//;
+  var realFetch=window.fetch.bind(window);
+  window.fetch=function(input,init){
+    var url=typeof input==='string'?input:(input&&input.url)||'';
+    if(!GAS.test(url)) return realFetch(input,init);
+    var k=getKey();
+    if(init&&typeof init.body==='string'){
+      try{ var b=JSON.parse(init.body); if(b&&typeof b==='object'&&!Array.isArray(b)){ b.key=k; init=Object.assign({},init,{body:JSON.stringify(b)}); } }catch(e){}
+    } else if(!init||!init.method||String(init.method).toUpperCase()==='GET'){
+      input=url+(url.indexOf('?')<0?'?':'&')+'key='+encodeURIComponent(k);
+    }
+    return realFetch(input,init).then(function(res){
+      res.clone().text().then(function(t){
+        if(/"unauthorized"/.test(t)){ try{ localStorage.removeItem(KEY); }catch(e){} ask('That password didn’t work. Enter it again.'); }
+      }).catch(function(){});
+      return res;
+    });
+  };
+  function boot(){ if(!getKey()) ask(); }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
+})();
+</script>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
