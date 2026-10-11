@@ -127,49 +127,20 @@ input::placeholder{color:rgba(245,240,232,0.25)}
 
   <div id="mainContent" class="hidden">
     <div class="title">Admin Panel</div>
-    <div class="subtitle">Manage users, view activity, sync data <span class="badge">⭐ ADMIN</span></div>
+    <div class="subtitle">View activity &amp; sync data <span class="badge">⭐ ADMIN</span></div>
 
     <div class="warning-box hidden" id="syncOverdue"></div>
 
     <a href="browse.html" class="btn" style="display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;margin-bottom:14px;background:linear-gradient(135deg,#7ec850,#2d7a47);color:#0d1f13;padding:14px;font-weight:700;border-radius:11px;font-size:14px">🔍 Browse &amp; Search All Records</a>
 
     <div class="tabs">
-      <button class="tab active" onclick="showPanel('users')" id="tabUsers">👥 Users</button>
-      <button class="tab" onclick="showPanel('activity')" id="tabActivity">📊 Activity</button>
+      <button class="tab active" onclick="showPanel('activity')" id="tabActivity">📊 Activity</button>
       <button class="tab" onclick="showPanel('sync')" id="tabSync">🔄 Sync</button>
       <button class="tab" onclick="showPanel('import')" id="tabImport">📋 Import</button>
     </div>
 
-    <!-- USERS PANEL -->
-    <div class="panel show" id="panelUsers">
-      <div class="section-card">
-        <div class="section-title">🔑 Access Codes</div>
-        <div class="codes-display">
-          <div class="code-item">
-            <div class="code-label">Admin</div>
-            <div class="code-val">0620</div>
-          </div>
-          <div class="code-item">
-            <div class="code-label">Employee</div>
-            <div class="code-val">0420</div>
-          </div>
-        </div>
-        <div class="info-box">
-          Share these codes only with people you trust. Anyone with the admin code (0620) can manage users and trigger PA Plants sync.
-        </div>
-      </div>
-
-      <div class="section-card">
-        <div class="section-title">👥 Registered Users</div>
-        <input type="text" id="userSearch" placeholder="Search by name or email..." oninput="renderUsers()">
-        <div id="usersContent">
-          <div class="loading"><div class="load-spinner"></div><div>Loading users...</div></div>
-        </div>
-      </div>
-    </div>
-
     <!-- ACTIVITY PANEL -->
-    <div class="panel" id="panelActivity">
+    <div class="panel show" id="panelActivity">
       <div class="section-card">
         <div class="section-title">📊 Search Activity</div>
         <input type="text" id="activitySearch" placeholder="Filter by user, address..." oninput="renderActivity()">
@@ -274,7 +245,7 @@ input::placeholder{color:rgba(245,240,232,0.25)}
 // BeeAware's Google Apps Script backend only answers requests that carry the app password, checked
 // on Google's side. It is the same password as FieldPro and the LPP Log, kept in this browser under
 // the same name (same site), so a device that already unlocked those opens BeeAware without asking.
-// The Firebase sign-in still says who you are; this is what protects the registry data. It is never written into this file,
+// The name picked on BeeAware's start screen says who you are; this is what protects the registry data. It is never written into this file,
 // because this file is public. Every request to a script.google.com backend gets it added here, so
 // no individual call site has to remember it.
 (function(){
@@ -319,27 +290,21 @@ input::placeholder{color:rgba(245,240,232,0.25)}
 </script>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, deleteUser } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, getDocs, doc, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+// ── Who's using this device ───────────────────────────────────────────────────────────────
+// BeeAware no longer has its own sign-in (Oct 2026). The shared app password protects the data, and
+// the name picked on the start screen (localStorage 'lpp_user') says who is logging. These stand in
+// for the old Firebase calls so the rest of this page is unchanged.
+const auth = null;
+function onAuthStateChanged(_auth, cb) {
+  let u = null; try { u = JSON.parse(localStorage.getItem('lpp_user') || 'null'); } catch (e) {}
+  setTimeout(() => cb(u && u.name ? { uid: u.uid || 'local', email: u.email || '', displayName: u.name } : null), 0);
+}
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCtBCUuQAHuQ1O8V2sXoFYBcfaL_samV4o",
-  authDomain: "lpp-search.firebaseapp.com",
-  projectId: "lpp-search",
-  storageBucket: "lpp-search.firebasestorage.app",
-  messagingSenderId: "566058509628",
-  appId: "1:566058509628:web:beaf2b918377be9c152a39"
-};
 
 const SHEETS_API = "https://script.google.com/macros/s/AKfycbw5uhfIZeX-i0zGVNU6XllGZQ4TNTwA4THXRQWIS8pq3yKtMBqntV3slaEqGPAk-R5hDQ/exec";
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
 
 let currentUser = null;
-let allUsers = [];
 let allActivity = [];
 
 onAuthStateChanged(auth, async (user) => {
@@ -353,7 +318,7 @@ onAuthStateChanged(auth, async (user) => {
   }
   
   document.getElementById('mainContent').classList.remove('hidden');
-  loadUsers();
+  loadActivity();
   loadSyncStatus();
   loadFixCount();
 });
@@ -384,7 +349,7 @@ async function loadFixCount() {
 }
 
 window.showPanel = function(panel) {
-  ['users','activity','sync','import'].forEach(p => {
+  ['activity','sync','import'].forEach(p => {
     document.getElementById('panel' + p.charAt(0).toUpperCase()+p.slice(1)).classList.toggle('show', p === panel);
     document.getElementById('tab' + p.charAt(0).toUpperCase()+p.slice(1)).classList.toggle('active', p === panel);
   });
@@ -392,74 +357,6 @@ window.showPanel = function(panel) {
   if (panel === 'import') {
     const f = document.getElementById('importFrame');
     if (!f.src) f.src = 'import.html?embed=1';
-  }
-};
-
-// ── USERS ──────────────────────────────────────────────
-async function loadUsers() {
-  try {
-    const snap = await getDocs(collection(db, 'users'));
-    allUsers = [];
-    snap.forEach(d => {
-      allUsers.push({ id: d.id, ...d.data() });
-    });
-    renderUsers();
-  } catch(e) {
-    document.getElementById('usersContent').innerHTML = 
-      `<div class="empty">Failed to load: ${e.message}</div>`;
-  }
-}
-
-window.renderUsers = function() {
-  const search = document.getElementById('userSearch').value.trim().toLowerCase();
-  let users = allUsers.slice();
-  if (search) {
-    users = users.filter(u => 
-      (u.name || '').toLowerCase().includes(search) ||
-      (u.email || '').toLowerCase().includes(search)
-    );
-  }
-  
-  // Sort: admins first, then by name
-  users.sort((a, b) => {
-    if (a.role !== b.role) return a.role === 'admin' ? -1 : 1;
-    return (a.name || '').localeCompare(b.name || '');
-  });
-  
-  const content = document.getElementById('usersContent');
-  if (users.length === 0) {
-    content.innerHTML = `<div class="empty">No users found</div>`;
-    return;
-  }
-  
-  let html = '';
-  for (const u of users) {
-    const isSelf = u.id === currentUser.uid;
-    const initials = (u.name || u.email || '?').split(' ').map(s => s[0]).join('').slice(0, 2).toUpperCase();
-    html += `
-      <div class="user-card">
-        <div class="user-avatar">${initials}</div>
-        <div class="user-info">
-          <div class="user-name">${escapeHtml(u.name || 'Unnamed')}${isSelf ? '<span class="user-self">YOU</span>' : ''}</div>
-          <div class="user-email">${escapeHtml(u.email || '')}</div>
-          <div class="user-role ${u.role || 'employee'}">${u.role === 'admin' ? '⭐ Admin' : 'Employee'}</div>
-        </div>
-        ${!isSelf ? `<button class="user-delete" onclick="confirmDeleteUser('${u.id}','${escapeHtml(u.name || u.email)}')">🗑</button>` : ''}
-      </div>
-    `;
-  }
-  content.innerHTML = html;
-};
-
-window.confirmDeleteUser = async function(uid, name) {
-  if (!confirm(`Delete user "${name}"?\n\nThis removes their profile. They will lose access on next login but their existing logs in Google Sheets remain.`)) return;
-  try {
-    await deleteDoc(doc(db, 'users', uid));
-    allUsers = allUsers.filter(u => u.id !== uid);
-    renderUsers();
-    showToast('✓ User deleted');
-  } catch(e) {
-    alert('Failed to delete: ' + e.message);
   }
 };
 
