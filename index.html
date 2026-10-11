@@ -98,8 +98,7 @@ input::placeholder{color:rgba(245,240,232,0.25)}
   </div>
   <div class="card" id="authCard">
     <div class="tabs">
-      <button class="tab active" id="tabLogin" onclick="switchTab('login')">Sign In</button>
-      <button class="tab" id="tabSignup" onclick="switchTab('signup')">Create Account</button>
+      <button class="tab active" id="tabLogin">Sign In</button>
     </div>
     <div id="loginForm">
       <div class="form-group">
@@ -112,33 +111,6 @@ input::placeholder{color:rgba(245,240,232,0.25)}
       </div>
       <button class="btn" id="loginBtn" onclick="handleLogin()">Sign In &#8594;</button>
       <div class="msg" id="loginMsg"></div>
-    </div>
-    <div id="signupForm" class="hidden">
-      <div class="form-group">
-        <label>Full Name</label>
-        <input type="text" id="signupName" placeholder="John Smith" autocomplete="name">
-      </div>
-      <div class="form-group">
-        <label>Email</label>
-        <input type="email" id="signupEmail" placeholder="you@email.com" autocomplete="email">
-      </div>
-      <div class="form-group">
-        <label>Password</label>
-        <input type="password" id="signupPassword" placeholder="Min. 6 characters" autocomplete="new-password">
-      </div>
-      <div class="form-group">
-        <label>Access Code</label>
-        <div class="code-wrap">
-          <input type="password" id="accessCode" placeholder="&#8226;&#8226;&#8226;&#8226;" maxlength="4" inputmode="numeric" oninput="checkCode()">
-        </div>
-        <div class="code-hint">Enter the code provided by your administrator</div>
-        <div class="role-badge" id="roleBadge">
-          <div class="role-dot" id="roleDot"></div>
-          <span id="roleText"></span>
-        </div>
-      </div>
-      <button class="btn" id="signupBtn" onclick="handleSignup()" disabled>Create Account &#8594;</button>
-      <div class="msg" id="signupMsg"></div>
     </div>
   </div>
   <div class="footer">&#169; Lawns Plants &amp; Pests &#183; Secure Registry Tool</div>
@@ -210,8 +182,8 @@ input::placeholder{color:rgba(245,240,232,0.25)}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCtBCUuQAHuQ1O8V2sXoFYBcfaL_samV4o",
@@ -226,8 +198,8 @@ const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getFirestore(app);
 
-const ADMIN_CODE = '0620';
-const USER_CODE  = '0420';
+// Sign-up was removed (Oct 2026): accounts are only Devon's and Elyse's, and the access codes sat in
+// this public file. New accounts, if ever needed, are added in the Firebase console.
 
 onAuthStateChanged(auth, async (user) => {
   document.getElementById('loadingScreen').classList.add('hidden');
@@ -245,29 +217,6 @@ async function getUserProfile(uid) {
     return snap.exists() ? snap.data() : null;
   } catch(e) { return null; }
 }
-
-window.handleSignup = async function() {
-  const name  = document.getElementById('signupName').value.trim();
-  const email = document.getElementById('signupEmail').value.trim();
-  const pass  = document.getElementById('signupPassword').value;
-  const code  = document.getElementById('accessCode').value;
-  if (!name||!email||!pass) return showMsg('signupMsg','Please fill in all fields.','error');
-  if (pass.length < 6) return showMsg('signupMsg','Password must be at least 6 characters.','error');
-  if (code !== ADMIN_CODE && code !== USER_CODE) return showMsg('signupMsg','Invalid access code.','error');
-  const role = code === ADMIN_CODE ? 'admin' : 'employee';
-  const btn  = document.getElementById('signupBtn');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="btn-spinner"></span>Creating account...';
-  try {
-    const cred = await createUserWithEmailAndPassword(auth, email, pass);
-    await updateProfile(cred.user, { displayName: name });
-    await setDoc(doc(db, 'users', cred.user.uid), { name, email, role, created: new Date().toISOString() });
-  } catch(e) {
-    btn.disabled = false;
-    btn.innerHTML = 'Create Account →';
-    showMsg('signupMsg', firebaseError(e.code), 'error');
-  }
-};
 
 window.handleLogin = async function() {
   const email = document.getElementById('loginEmail').value.trim();
@@ -312,26 +261,7 @@ function showDashboard(user, profile) {
   localStorage.setItem('lpp_user', JSON.stringify({name, email:user.email, role, uid:user.uid}));
 }
 
-window.switchTab = function(tab) {
-  document.getElementById('tabLogin').classList.toggle('active',tab==='login');
-  document.getElementById('tabSignup').classList.toggle('active',tab==='signup');
-  document.getElementById('loginForm').classList.toggle('hidden',tab!=='login');
-  document.getElementById('signupForm').classList.toggle('hidden',tab!=='signup');
-  clearMessages();
-};
-
-window.checkCode = function() {
-  const code=document.getElementById('accessCode').value;
-  const badge=document.getElementById('roleBadge');
-  const dot=document.getElementById('roleDot');
-  const text=document.getElementById('roleText');
-  const btn=document.getElementById('signupBtn');
-  if(code===ADMIN_CODE){badge.classList.add('show');dot.className='role-dot admin';text.textContent='⭐ Admin access — full permissions';btn.disabled=false;}
-  else if(code===USER_CODE){badge.classList.add('show');dot.className='role-dot employee';text.textContent='✓ Employee access confirmed';btn.disabled=false;}
-  else{badge.classList.remove('show');btn.disabled=true;}
-};
-
-function clearMessages(){['loginMsg','signupMsg'].forEach(id=>{const el=document.getElementById(id);el.className='msg';el.textContent='';});}
+function clearMessages(){['loginMsg'].forEach(id=>{const el=document.getElementById(id);el.className='msg';el.textContent='';});}
 function showMsg(id,text,type){const el=document.getElementById(id);el.textContent=text;el.className='msg '+type;}
 function firebaseError(code){
   const map={'auth/email-already-in-use':'An account with this email already exists.','auth/invalid-email':'Please enter a valid email address.','auth/weak-password':'Password must be at least 6 characters.','auth/user-not-found':'No account found with this email.','auth/wrong-password':'Incorrect password.','auth/invalid-credential':'Incorrect email or password.','auth/too-many-requests':'Too many attempts. Please try again later.'};
