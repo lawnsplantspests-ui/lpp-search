@@ -35,7 +35,7 @@ is restoring the file from the commit before it.
 
 | Page | What it is |
 |---|---|
-| `index.html` | Sign-in + dashboard |
+| `index.html` | "Who's using this device?" name picker + dashboard. Access is the shared app password (same as FieldPro / LPP Log), checked by the Apps Script on every request — there is no separate BeeAware sign-in. |
 | `search.html` | Address check before a treatment |
 | `map.html` | Live map: apiaries, hypers, swarms, unregistered hives, measure tool, spot check |
 | `browse.html` | Admin: search all records by name, inline results map |

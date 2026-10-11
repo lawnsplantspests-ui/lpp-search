@@ -98,22 +98,19 @@ input::placeholder{color:rgba(245,240,232,0.25)}
   </div>
   <div class="card" id="authCard">
     <div class="tabs">
-      <button class="tab active" id="tabLogin">Sign In</button>
+      <button class="tab active">Who&rsquo;s using this device?</button>
     </div>
-    <div id="loginForm">
+    <div id="pickForm">
+      <button class="btn" onclick="pickName('Devon Alleman')" style="margin-bottom:10px">Devon</button>
+      <button class="btn" onclick="pickName('Elyse')" style="margin-bottom:18px">Elyse</button>
       <div class="form-group">
-        <label>Email</label>
-        <input type="email" id="loginEmail" placeholder="you@email.com" autocomplete="email">
+        <label>Someone else</label>
+        <input type="text" id="otherName" placeholder="Your name" autocomplete="name" onkeydown="if(event.key==='Enter')pickOther()">
       </div>
-      <div class="form-group">
-        <label>Password</label>
-        <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
-      </div>
-      <button class="btn" id="loginBtn" onclick="handleLogin()">Sign In &#8594;</button>
+      <button class="btn" onclick="pickOther()">Continue &#8594;</button>
       <div class="msg" id="loginMsg"></div>
     </div>
   </div>
-  <div class="footer">&#169; Lawns Plants &amp; Pests &#183; Secure Registry Tool</div>
 </div>
 
 <div class="screen hidden" id="dashScreen">
@@ -171,102 +168,104 @@ input::placeholder{color:rgba(245,240,232,0.25)}
         <div class="dash-card-icon admin-ic">&#9881;&#65039;</div>
         <div class="dash-card-text">
           <h3>Admin Panel</h3>
-          <p>Sync PA Plants, manage users &amp; view all searches</p>
+          <p>Sync PA Plants &amp; view all searches</p>
         </div>
         <div class="dash-card-arrow">&#8250;</div>
       </a>
     </div>
-    <button class="logout-btn" onclick="handleLogout()">Sign Out</button>
+    <button class="logout-btn" onclick="handleLogout()">Switch user</button>
   </div>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyCtBCUuQAHuQ1O8V2sXoFYBcfaL_samV4o",
-  authDomain: "lpp-search.firebaseapp.com",
-  projectId: "lpp-search",
-  storageBucket: "lpp-search.firebasestorage.app",
-  messagingSenderId: "566058509628",
-  appId: "1:566058509628:web:beaf2b918377be9c152a39"
-};
-
-const app  = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db   = getFirestore(app);
-
-// Sign-up was removed (Oct 2026): accounts are only Devon's and Elyse's, and the access codes sat in
-// this public file. New accounts, if ever needed, are added in the Firebase console.
-
-onAuthStateChanged(auth, async (user) => {
-  document.getElementById('loadingScreen').classList.add('hidden');
-  if (user) {
-    const profile = await getUserProfile(user.uid);
-    showDashboard(user, profile);
-  } else {
-    document.getElementById('authScreen').classList.remove('hidden');
+<script>
+// ── App password ─────────────────────────────────────────────────────────────────────────────
+// The three Google Apps Script backends (FieldPro, LPP Log, SoilTracks) only answer requests that
+// carry the app password, checked on Google's side. It is asked for once per device and kept in
+// this browser; FieldPro and the LPP Log share it (same site). It is never written into this file,
+// because this file is public. Every request to a script.google.com backend gets it added here, so
+// no individual call site has to remember it.
+(function(){
+  var KEY='lpp_app_key';
+  function getKey(){ try{ return localStorage.getItem(KEY)||''; }catch(e){ return ''; } }
+  function ask(msg){
+    if(document.getElementById('appkey-ov')) return;
+    var ov=document.createElement('div'); ov.id='appkey-ov';
+    ov.style.cssText='position:fixed;inset:0;z-index:2147483000;background:rgba(10,14,12,.96);display:flex;align-items:flex-start;justify-content:center;padding-top:16vh;font-family:-apple-system,Segoe UI,Roboto,sans-serif';
+    ov.innerHTML='<form style="width:300px;max-width:88vw;text-align:center;color:#eee">'+
+      '<div style="font-size:20px;font-weight:700;margin-bottom:6px">App password</div>'+
+      '<div id="appkey-msg" style="font-size:13px;opacity:.8;margin-bottom:18px"></div>'+
+      '<input type="password" autocomplete="current-password" style="width:100%;box-sizing:border-box;padding:14px;font-size:18px;border-radius:10px;border:1px solid #555;background:#1b211d;color:#fff;margin-bottom:12px">'+
+      '<button style="width:100%;padding:14px;font-size:16px;font-weight:700;border:0;border-radius:10px;background:#3fa34d;color:#fff">Unlock</button></form>';
+    (document.body||document.documentElement).appendChild(ov);
+    ov.querySelector('#appkey-msg').textContent=msg||'Enter it once — this device will remember it.';
+    var f=ov.querySelector('form'), i=ov.querySelector('input'); setTimeout(function(){ i.focus(); },50);
+    f.onsubmit=function(e){ e.preventDefault(); var v=i.value.trim(); if(!v) return; try{ localStorage.setItem(KEY,v); }catch(_){} location.reload(); };
   }
-});
+  window.appKey=getKey; window.appKeyAsk=ask;
+  var GAS=/^https:\/\/script\.google\.com\/macros\//;
+  var realFetch=window.fetch.bind(window);
+  window.fetch=function(input,init){
+    var url=typeof input==='string'?input:(input&&input.url)||'';
+    if(!GAS.test(url)) return realFetch(input,init);
+    var k=getKey();
+    if(init&&typeof init.body==='string'){
+      try{ var b=JSON.parse(init.body); if(b&&typeof b==='object'&&!Array.isArray(b)){ b.key=k; init=Object.assign({},init,{body:JSON.stringify(b)}); } }catch(e){}
+    } else if(!init||!init.method||String(init.method).toUpperCase()==='GET'){
+      input=url+(url.indexOf('?')<0?'?':'&')+'key='+encodeURIComponent(k);
+    }
+    return realFetch(input,init).then(function(res){
+      res.clone().text().then(function(t){
+        if(/"unauthorized"/.test(t)){ try{ localStorage.removeItem(KEY); }catch(e){} ask('That password didn’t work. Enter it again.'); }
+      }).catch(function(){});
+      return res;
+    });
+  };
+  function boot(){ if(!getKey()) ask(); }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
+})();
+</script>
 
-async function getUserProfile(uid) {
-  try {
-    const snap = await getDoc(doc(db, 'users', uid));
-    return snap.exists() ? snap.data() : null;
-  } catch(e) { return null; }
+<script>
+// ── Who's using this device ─────────────────────────────────────────────────────────────────
+// BeeAware's own email sign-in was removed (Oct 2026): the shared app password (same as FieldPro
+// and the LPP Log) is what protects the data, checked by the Google script on every request. This
+// screen only records WHO is using the device, for the "Logged by" name on swarms, colonies and
+// searches. It is remembered in localStorage 'lpp_user', which every BeeAware page reads.
+function currentUser(){ try { return JSON.parse(localStorage.getItem('lpp_user') || 'null'); } catch (e) { return null; } }
+function pickName(name){
+  name = String(name || '').trim(); if (!name) return;
+  localStorage.setItem('lpp_user', JSON.stringify({ name, email: '', role: 'admin', uid: 'local-' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-') }));
+  showDashboard(currentUser());
 }
-
-window.handleLogin = async function() {
-  const email = document.getElementById('loginEmail').value.trim();
-  const pass  = document.getElementById('loginPassword').value;
-  if (!email||!pass) return showMsg('loginMsg','Please enter your email and password.','error');
-  const btn = document.getElementById('loginBtn');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="btn-spinner"></span>Signing in...';
-  try {
-    await signInWithEmailAndPassword(auth, email, pass);
-  } catch(e) {
-    btn.disabled = false;
-    btn.innerHTML = 'Sign In →';
-    document.getElementById('authCard').classList.add('shake');
-    setTimeout(()=>document.getElementById('authCard').classList.remove('shake'),400);
-    showMsg('loginMsg', firebaseError(e.code), 'error');
-  }
-};
-
-window.handleLogout = async function() {
-  await signOut(auth);
+function pickOther(){
+  const v = document.getElementById('otherName').value.trim();
+  if (!v) return showMsg('loginMsg', 'Type your name, or tap Devon or Elyse.', 'error');
+  pickName(v);
+}
+function handleLogout(){
+  localStorage.removeItem('lpp_user');
   document.getElementById('dashScreen').classList.add('hidden');
   document.getElementById('authScreen').classList.remove('hidden');
-  document.getElementById('loginEmail').value='';
-  document.getElementById('loginPassword').value='';
-  document.getElementById('loginBtn').disabled=false;
-  document.getElementById('loginBtn').innerHTML='Sign In →';
+  document.getElementById('otherName').value = '';
   clearMessages();
-};
-
-function showDashboard(user, profile) {
+}
+function showDashboard(u){
   document.getElementById('authScreen').classList.add('hidden');
   document.getElementById('dashScreen').classList.remove('hidden');
-  document.getElementById('dashboard').style.display='block';
-  const name = profile?.name || user.displayName || user.email;
-  const role = profile?.role || 'employee';
-  document.getElementById('dashUserName').textContent = name.split(' ')[0];
+  document.getElementById('dashboard').style.display = 'block';
+  document.getElementById('dashUserName').textContent = u.name.split(' ')[0];
   const pill = document.getElementById('dashRolePill');
-  pill.textContent = role==='admin' ? '⭐ Admin' : 'Employee';
-  pill.className = 'dash-role-pill '+role;
-  document.getElementById('adminCard').style.display = role==='admin' ? 'flex' : 'none';
-  localStorage.setItem('lpp_user', JSON.stringify({name, email:user.email, role, uid:user.uid}));
+  pill.textContent = '⭐ Admin';
+  pill.className = 'dash-role-pill admin';
+  document.getElementById('adminCard').style.display = 'flex';
 }
-
-function clearMessages(){['loginMsg'].forEach(id=>{const el=document.getElementById(id);el.className='msg';el.textContent='';});}
-function showMsg(id,text,type){const el=document.getElementById(id);el.textContent=text;el.className='msg '+type;}
-function firebaseError(code){
-  const map={'auth/email-already-in-use':'An account with this email already exists.','auth/invalid-email':'Please enter a valid email address.','auth/weak-password':'Password must be at least 6 characters.','auth/user-not-found':'No account found with this email.','auth/wrong-password':'Incorrect password.','auth/invalid-credential':'Incorrect email or password.','auth/too-many-requests':'Too many attempts. Please try again later.'};
-  return map[code]||'Something went wrong. Please try again.';
-}
+function clearMessages(){ const el = document.getElementById('loginMsg'); el.className = 'msg'; el.textContent = ''; }
+function showMsg(id, text, type){ const el = document.getElementById(id); el.textContent = text; el.className = 'msg ' + type; }
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('loadingScreen').classList.add('hidden');
+  const u = currentUser();
+  if (u && u.name) showDashboard(u); else document.getElementById('authScreen').classList.remove('hidden');
+});
 </script>
 </body>
 </html>

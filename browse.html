@@ -150,7 +150,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
 // BeeAware's Google Apps Script backend only answers requests that carry the app password, checked
 // on Google's side. It is the same password as FieldPro and the LPP Log, kept in this browser under
 // the same name (same site), so a device that already unlocked those opens BeeAware without asking.
-// The Firebase sign-in still says who you are; this is what protects the registry data. It is never written into this file,
+// The name picked on BeeAware's start screen says who you are; this is what protects the registry data. It is never written into this file,
 // because this file is public. Every request to a script.google.com backend gets it added here, so
 // no individual call site has to remember it.
 (function(){
@@ -196,21 +196,18 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+// ── Who's using this device ───────────────────────────────────────────────────────────────
+// BeeAware no longer has its own sign-in (Oct 2026). The shared app password protects the data, and
+// the name picked on the start screen (localStorage 'lpp_user') says who is logging. These stand in
+// for the old Firebase calls so the rest of this page is unchanged.
+const auth = null;
+function onAuthStateChanged(_auth, cb) {
+  let u = null; try { u = JSON.parse(localStorage.getItem('lpp_user') || 'null'); } catch (e) {}
+  setTimeout(() => cb(u && u.name ? { uid: u.uid || 'local', email: u.email || '', displayName: u.name } : null), 0);
+}
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCtBCUuQAHuQ1O8V2sXoFYBcfaL_samV4o",
-  authDomain: "lpp-search.firebaseapp.com",
-  projectId: "lpp-search",
-  storageBucket: "lpp-search.firebasestorage.app",
-  messagingSenderId: "566058509628",
-  appId: "1:566058509628:web:beaf2b918377be9c152a39"
-};
 const SHEETS_API = "https://script.google.com/macros/s/AKfycbw5uhfIZeX-i0zGVNU6XllGZQ4TNTwA4THXRQWIS8pq3yKtMBqntV3slaEqGPAk-R5hDQ/exec";
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 
 let allRecords = [];
 let filtered = [];
