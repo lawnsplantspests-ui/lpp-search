@@ -1,20 +1,28 @@
-// LPP Search API v9 (v8 + updateHive/updateSwarm can move pins: lat/lng/address write-back)
-//
-// ⚠️ BACKUP COPY — the LIVE copy of this script lives inside the Google Sheet:
-//    open the Master Sheet → Extensions → Apps Script.
-//    This file is kept in the repo so the script is never lost.
-//    Editing THIS file does NOT change the live app.
-//
-// To install/update the live script:
-//   1. Open the Master Sheet → Extensions → Apps Script
-//   2. Select all the code there and replace it with this entire file
-//   3. Save, then: Deploy → Manage deployments → pencil → New version → Deploy
-//
-// If you change the live script, paste the new version back into this file too.
+// ⚠️ BACKUP COPY — the LIVE copy is the Apps Script bound to the Master Sheet (Extensions → Apps Script,
+//    script 1XUtPB_VjV8XVuoR5W_9OvDfgz2r3h5rEBOkKv_hZCY3RQh-xkDNj6bNE, deployment AKfycbw5uhfIZeX…). Published
+//    from ~/LPP/apps-script-live/beeaware with clasp (push, then redeploy that deployment to keep the URL).
+//    It needs the APP_KEY script property — the shared app password. No secrets in this file.
+
+// LPP Search API v10 (v9 move-pin write-back + app password check, Oct 11 2026)
+// Replace your entire Apps Script with this, then redeploy
+// (Deploy → Manage deployments → pencil → New version → Deploy)
 
 const SHEET_ID = '1UED2EPSARAUhNua4mUGSgxkO2q18v3PkzkrVWmg5Ngk';
 
+// ── App password ──────────────────────────────────────────────────────────────────────────
+// This web app is reachable by anyone who has its URL, and the URL is in BeeAware's public code.
+// So every request must carry the app password (the same one as FieldPro and the LPP Log), kept in
+// Project Settings → Script properties as APP_KEY — never in this code. If APP_KEY is missing,
+// everything is refused (fails closed). The Firebase sign-in in the app says who you are; this is
+// what protects the registry (incl. the Hypersensitive list) and stops anonymous edits/deletes.
+function appKeyOk_(key) {
+  var want = PropertiesService.getScriptProperties().getProperty('APP_KEY');
+  want = want ? String(want).trim() : '';
+  return !!want && typeof key === 'string' && key.trim() === want;
+}
+
 function doGet(e) {
+  if (!appKeyOk_((e.parameter || {}).key)) return jsonResponse({ error: 'unauthorized' });
   const action = e.parameter.action;
   try {
     if (action === 'getRegistry')    return getRegistry();
@@ -33,6 +41,7 @@ function doGet(e) {
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
+    if (!appKeyOk_(data.key)) return jsonResponse({ error: 'unauthorized' });
     const action = data.action;
     if (action === 'logSearch')          return logSearch(data);
     if (action === 'logContact')         return logContact(data);
