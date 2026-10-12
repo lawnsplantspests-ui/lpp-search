@@ -11,6 +11,7 @@
 <title>Live Map — LPP</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=DM+Mono&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--green:#1a4d2e;--green-mid:#2d7a47;--lime:#7ec850;--cream:#f5f0e8;--amber:#e8a020;--red:#c0392b;--dark:#0d1f13;--blue:#3a8dde;--border:rgba(126,200,80,0.25)}
@@ -31,6 +32,8 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
 .leaflet-popup-content{margin:10px 14px;font-size:13px;line-height:1.45}
 .leaflet-popup-content b{color:var(--lime);font-size:14px}
 .leaflet-popup-close-button{color:var(--cream)!important}
+/* Cluster bubbles: a count of the pins hidden underneath, colored by layer */
+.lpp-cluster{border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-family:'DM Sans',sans-serif}
 /* Anti-bulk-copy protection (employees) */
 body.role-employee .leaflet-popup-content{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 body.role-employee .leaflet-popup-content a[href^="tel:"],
@@ -460,6 +463,8 @@ body.placing .layer-toggles,body.placing .county-filter,body.placing .stats-over
 </script>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="regcache.js"></script>
 <script type="module">
 // ── Who's using this device ───────────────────────────────────────────────────────────────
 // BeeAware no longer has its own sign-in (Oct 2026). The shared app password protects the data, and
@@ -538,8 +543,8 @@ onAuthStateChanged(auth, async (user) => {
 async function loadData() {
   try {
     // Try cache first
-    const cachedReg = localStorage.getItem('lpp_registry_v2');
-    if (cachedReg) registry = JSON.parse(cachedReg);
+    const cachedReg = await RegCache.get();
+    if (cachedReg) registry = cachedReg.records;
     const cachedSw = localStorage.getItem('lpp_swarms');
     if (cachedSw) swarms = JSON.parse(cachedSw);
     const cachedHv = localStorage.getItem('lpp_hives');
@@ -550,8 +555,7 @@ async function loadData() {
     const data = await res.json();
     if (data.registry) {
       registry = data.registry;
-      localStorage.setItem('lpp_registry_v2', JSON.stringify(registry));
-      localStorage.setItem('lpp_registry_v2_time', Date.now().toString());
+      RegCache.set(registry);
     }
     if (data.swarms) {
       swarms = data.swarms;
@@ -665,20 +669,24 @@ function focusFromUrl() {
 function renderAllLayers() {
   // Clear existing
   Object.values(layers).forEach(l => { if (l) map.removeLayer(l); });
-  layers = { apiary: L.layerGroup(), hyper: L.layerGroup(), swarm: L.layerGroup(), hive: L.layerGroup() };
+  // Apiaries and hypers are clustered (12k+ pins statewide); swarms and colonies are few, so stay plain.
+  layers = { apiary: makeCluster('apiary'), hyper: makeCluster('hyper'), swarm: L.layerGroup(), hive: L.layerGroup() };
 
   const countyFilter = document.getElementById('countyFilter')?.value || '';
 
   let countA = 0, countH = 0, countS = 0, countV = 0;
 
+  const regMarkers = { apiary: [], hyper: [] };
   for (const r of registry) {
     if (!r.lat || !r.lng) continue;
     if (countyFilter && r.county !== countyFilter) continue;
     const layer = r.type === 'Apiary' ? 'apiary' : 'hyper';
     if (layer === 'apiary') countA++; else countH++;
-    const marker = makeMarker(r.lat, r.lng, layer, r);
-    layers[layer].addLayer(marker);
+    regMarkers[layer].push(makeMarker(r.lat, r.lng, layer, r));
   }
+  // addLayers (bulk) is far faster than one addLayer per pin for a cluster group
+  layers.apiary.addLayers(regMarkers.apiary);
+  layers.hyper.addLayers(regMarkers.hyper);
 
   for (const s of swarms) {
     if (!s.lat || !s.lng) continue;
@@ -707,6 +715,28 @@ function renderAllLayers() {
   }
 }
 
+// Pins group into a numbered bubble when zoomed out; from street level (zoom 15) on,
+// every pin shows on its own so nothing near a job site is ever hidden in a bubble.
+function makeCluster(type) {
+  const color = type === 'apiary' ? '#e8a020' : '#c0392b';
+  return L.markerClusterGroup({
+    chunkedLoading: true,
+    disableClusteringAtZoom: 15,
+    maxClusterRadius: 50,
+    showCoverageOnHover: false,
+    spiderfyOnMaxZoom: false,
+    iconCreateFunction: (c) => {
+      const n = c.getChildCount();
+      const size = n < 10 ? 30 : n < 100 ? 36 : n < 1000 ? 44 : 52;
+      return L.divIcon({
+        className: '',
+        html: `<div class="lpp-cluster" style="background:${color};width:${size}px;height:${size}px;font-size:${n < 1000 ? 13 : 12}px">${n}</div>`,
+        iconSize: [size, size], iconAnchor: [size / 2, size / 2]
+      });
+    }
+  });
+}
+
 function makeMarker(lat, lng, type, data) {
   const colors = { apiary: '#e8a020', hyper: '#c0392b', swarm: '#7ec850', hive: '#9333ea' };
   const icons  = { apiary: '🐝', hyper: '!', swarm: '🍯', hive: '⬢' };
@@ -719,7 +749,8 @@ function makeMarker(lat, lng, type, data) {
     iconSize: [26, 26], iconAnchor: [13, 13]
   });
   const marker = L.marker([lat, lng], { icon });
-  marker.bindPopup(buildPopup(type, data));
+  // Built on tap, not up front — with thousands of pins, prebuilding every popup stalls the load
+  marker.bindPopup(() => buildPopup(type, data));
   return marker;
 }
 

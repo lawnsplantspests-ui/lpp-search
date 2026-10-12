@@ -289,6 +289,7 @@ input::placeholder{color:rgba(245,240,232,0.25)}
 })();
 </script>
 
+<script src="regcache.js"></script>
 <script type="module">
 // ── Who's using this device ───────────────────────────────────────────────────────────────
 // BeeAware no longer has its own sign-in (Oct 2026). The shared app password protects the data, and
@@ -432,11 +433,11 @@ window.renderActivity = function() {
 };
 
 // ── SYNC ───────────────────────────────────────────────
-function loadSyncStatus() {
-  // Count from registry cache
-  const cached = localStorage.getItem('lpp_registry');
+async function loadSyncStatus() {
+  // Count from registry cache (kept by Map/Search/Browse)
+  const cached = await RegCache.get();
   if (cached) {
-    const reg = JSON.parse(cached);
+    const reg = cached.records;
     document.getElementById('syncCount').textContent = reg.length + ' records';
     const counties = [...new Set(reg.map(r => r.county).filter(Boolean))].sort().join(', ');
     document.getElementById('counties').textContent = counties || '—';

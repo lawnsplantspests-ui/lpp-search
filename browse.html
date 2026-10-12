@@ -195,6 +195,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
 </script>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="regcache.js"></script>
 <script type="module">
 // ── Who's using this device ───────────────────────────────────────────────────────────────
 // BeeAware no longer has its own sign-in (Oct 2026). The shared app password protects the data, and
@@ -230,9 +231,9 @@ onAuthStateChanged(auth, async (user) => {
 
 async function loadRegistry() {
   try {
-    const cached = localStorage.getItem('lpp_registry_v2');
+    const cached = await RegCache.get();
     if (cached) {
-      allRecords = JSON.parse(cached);
+      allRecords = cached.records;
       populateCounties();
       restoreSearchState();
       applyFilters();
@@ -240,8 +241,7 @@ async function loadRegistry() {
     const res = await fetch(SHEETS_API + '?action=getRegistry');
     const data = await res.json();
     allRecords = data.records || [];
-    localStorage.setItem('lpp_registry_v2', JSON.stringify(allRecords));
-    localStorage.setItem('lpp_registry_v2_time', Date.now().toString());
+    RegCache.set(allRecords);
     populateCounties();
     restoreSearchState();
     applyFilters();

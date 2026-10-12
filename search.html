@@ -259,6 +259,7 @@ body.role-employee .contact-card a[href^="mailto:"]{user-select:auto;-webkit-use
 </script>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="regcache.js"></script>
 <script type="module">
 // ── Who's using this device ───────────────────────────────────────────────────────────────
 // BeeAware no longer has its own sign-in (Oct 2026). The shared app password protects the data, and
@@ -295,13 +296,12 @@ onAuthStateChanged(auth, async (user) => {
 // ── Load registry ───────────────────────────────────────
 async function loadRegistry() {
   // Try cache first for instant load
-  const cached = localStorage.getItem('lpp_registry_v2');
-  const cacheTime = localStorage.getItem('lpp_registry_v2_time');
+  const cached = await RegCache.get();
   const now = Date.now();
   
-  if (cached && cacheTime && (now - parseInt(cacheTime) < 86400000)) {
+  if (cached && (now - cached.time < 86400000)) {
     // Cache less than 24h old — use it instantly
-    registry = JSON.parse(cached);
+    registry = cached.records;
     showMain();
     // Refresh in background
     fetchRegistry().catch(()=>{});
@@ -322,8 +322,7 @@ async function fetchRegistry() {
   const data = await res.json();
   if (!data.records) throw new Error('No records returned');
   registry = data.records;
-  localStorage.setItem('lpp_registry_v2', JSON.stringify(registry));
-  localStorage.setItem('lpp_registry_v2_time', Date.now().toString());
+  RegCache.set(registry);
 }
 
 function showMain() {
