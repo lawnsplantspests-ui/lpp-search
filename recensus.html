@@ -196,6 +196,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
 })();
 </script>
 
+<script src="regcache.js"></script>
 <script type="module">
 // ── Who's using this device ───────────────────────────────────────────────────────────────
 // BeeAware no longer has its own sign-in (Oct 2026). The shared app password protects the data, and
@@ -337,11 +338,7 @@ window.stopGeocode = function() {
 
 window.clearCache = function() {
   if (!confirm('Clear app cache so Map/Search reload fresh data?')) return;
-  const keys = ['lpp_registry','lpp_registry_v2'];
-  keys.forEach(k => {
-    localStorage.removeItem(k);
-    localStorage.removeItem(k+'_time');
-  });
+  RegCache.clear();
   Object.keys(localStorage).forEach(k => {
     if (k.startsWith('geo_')) localStorage.removeItem(k);
   });

@@ -218,6 +218,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
 </script>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="regcache.js"></script>
 <script type="module">
 // ── Who's using this device ───────────────────────────────────────────────────────────────
 // BeeAware no longer has its own sign-in (Oct 2026). The shared app password protects the data, and
@@ -543,10 +544,7 @@ window.saveFix = async function() {
     r.lat = lat; r.lng = lng; r.verified = 'VERIFIED';
     
     // Clear app cache so next Map/Search loads fresh
-    ['lpp_registry','lpp_registry_v2'].forEach(k => {
-      localStorage.removeItem(k);
-      localStorage.removeItem(k+'_time');
-    });
+    RegCache.clear();
     
     showToast('✓ Fixed &amp; Verified');
     advance();
