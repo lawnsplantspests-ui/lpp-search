@@ -87,6 +87,8 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);co
 .no-access{text-align:center;padding:60px 20px}
 .no-access h2{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--red);margin-bottom:10px}
 .hidden{display:none!important}
+.since-badge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:0.3px;padding:2px 7px;border-radius:6px;background:rgba(245,240,232,0.1);color:rgba(245,240,232,0.75)}
+.since-new{background:rgba(126,200,80,0.2);color:#7ec850}
 </style>
 </head>
 <body>
@@ -212,6 +214,7 @@ const SHEETS_API = "https://script.google.com/macros/s/AKfycbw5uhfIZeX-i0zGVNU6X
 
 
 let allRecords = [];
+let sinceSpan = null;           // first/newest 'registered since' year in the data
 let filtered = [];
 let currentRecord = null;
 const MAX_RENDER = 200; // Render at most 200 cards at a time for performance
@@ -264,6 +267,7 @@ function populateCounties() {
 }
 
 function applyFilters() {
+  sinceSpan = sinceYears(allRecords);
   const q = document.getElementById('searchBox').value.trim().toLowerCase();
   const type = document.getElementById('filterType').value;
   const county = document.getElementById('filterCounty').value;
@@ -335,7 +339,7 @@ function render() {
     const verified = String(r.verified||'').toUpperCase().includes('VERIFIED');
     const noGps = !r.lat || !r.lng;
     
-    let meta = '';
+    let meta = sinceBadge(r, sinceSpan);
     if (verified) meta += '<span class="verified">✓ Verified</span>';
     if (noGps) meta += '<span class="no-gps">⚠ No GPS</span>';
     if (r.confidence) meta += `<span>${r.confidence}</span>`;
@@ -443,6 +447,7 @@ window.showDetails = function(idx) {
     <div class="d-meta-row">
       <span class="rc-type ${r.type==='Hyper'?'hyper':'apiary'}">${r.type==='Hyper'?'⚠️ HYPER':'🐝 APIARY'}</span>
       ${String(r.verified||'').toUpperCase().includes('VERIFIED') ? '<span class="rc-type" style="background:rgba(126,200,80,0.2);color:var(--lime)">✓ VERIFIED</span>' : ''}
+      ${sinceBadge(r, sinceSpan)}
       ${r.confidence ? `<span class="rc-type" style="background:rgba(58,141,222,0.15);color:#5ba8e8">${escapeHtml(r.confidence)}</span>` : ''}
     </div>
     <div class="d-row">
@@ -517,6 +522,21 @@ document.getElementById('dialog').addEventListener('click', (e) => {
   el.addEventListener('input', applyFilters);
   el.addEventListener('change', applyFilters);
 });
+
+// "Registered since" badge. Column M of the Apiary/Hypersensitive tabs holds the year a person first
+// showed up in a PA Plants pull (2026 = the first pull). Once the data holds more than one year,
+// people from the newest year get a "New" badge; everyone else shows how long they've been listed.
+function sinceYears(recs) {
+  const ys = recs.map(r => parseInt(r.since, 10)).filter(Boolean);
+  return ys.length ? { first: Math.min(...ys), newest: Math.max(...ys) } : null;
+}
+function sinceBadge(r, span) {
+  const y = parseInt(r.since, 10);
+  if (!y || !span) return '';
+  if (span.newest > span.first && y === span.newest)
+    return `<span class="since-badge since-new">🆕 New ${y}</span>`;
+  return `<span class="since-badge">Since ${y}</span>`;
+}
 
 function escapeHtml(s) {
   return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

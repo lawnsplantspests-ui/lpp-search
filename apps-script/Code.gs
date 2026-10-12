@@ -3,7 +3,7 @@
 //    from ~/LPP/apps-script-live/beeaware with clasp (push, then redeploy that deployment to keep the URL).
 //    It needs the APP_KEY script property — the shared app password. No secrets in this file.
 
-// LPP Search API v10 (v9 move-pin write-back + app password check, Oct 11 2026)
+// LPP Search API v11 (v10 + 'Registered Since' column M on registry records, Oct 11 2026)
 // Replace your entire Apps Script with this, then redeploy
 // (Deploy → Manage deployments → pencil → New version → Deploy)
 
@@ -96,6 +96,7 @@ function rowToRecord(row, type) {
     flag: row[9] || '',           // Column J - GEOCODE FAILED marker
     verified: row[10] || '',      // Column K - verification status (VERIFIED, NEEDS_REVIEW, blank)
     confidence: row[11] || '',    // Column L - geocoder confidence (ROOFTOP, PARCEL, STREET, ZIP)
+    since: row[12] || 2026,       // Column M - year first seen in a PA Plants pull; blank = in the first pull (2026)
     type: type,
     lat: null,
     lng: null
