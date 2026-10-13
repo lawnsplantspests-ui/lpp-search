@@ -245,7 +245,7 @@ window.loadStatus = async function() {
     let hi = 0, mid = 0, lo = 0;
     for (const r of allRecords) {
       const c = String(r.confidence || '').toUpperCase();
-      if (c === 'HIGH' || c === 'ROOFTOP' || c === 'EXACT') hi++;
+      if (c === 'HIGH' || c === 'ROOFTOP' || c === 'EXACT' || c === 'PA PLANTS') hi++;
       else if (c === 'MEDIUM' || c === 'PARCEL' || c === 'STREET') mid++;
       else lo++;
     }
@@ -273,7 +273,11 @@ window.setScope = function(s) {
   scope = s;
   document.querySelectorAll('.opt').forEach(o => o.classList.toggle('active', o.dataset.scope === s));
   
-  let records = allRecords.slice();
+  // Never re-geocode a pin the registrant placed on PA Plants (confidence "PA PLANTS") or one
+  // Devon hand-verified — those are the confirmed spots; a Census guess would only make them worse.
+  let records = allRecords.filter(r =>
+    String(r.confidence || '').toUpperCase() !== 'PA PLANTS' &&
+    !String(r.verified || '').toUpperCase().includes('VERIFIED'));
   if (s === 'missing') {
     records = records.filter(r => {
       const c = String(r.confidence || '').toUpperCase();
