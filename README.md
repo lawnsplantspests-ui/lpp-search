@@ -43,5 +43,5 @@ is restoring the file from the commit before it.
 | `import.html` | Converts pasted PA Plants results into sheet rows |
 | `recensus.html` | Bulk re-geocode via US Census (preferred) |
 | `geocode.html` | Bulk geocode via OSM (legacy) |
-| `edit.html` / `verify.html` / `restore-gps.html` | Location fix-up tools |
+| `edit.html` / `verify.html` | Location fix-up tools |
 | `log.html` | Contact logs |
